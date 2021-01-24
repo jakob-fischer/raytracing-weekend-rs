@@ -23,22 +23,6 @@ pub trait Norm {
     fn length(self: &Self) -> Self::Length;
 }
 
-impl<T> Vec3<T>
-where
-    T: Copy,
-    Vec3<T>: Norm<Length = T> + Div<Output = Vec3<T>> + DivAssign,
-{
-    pub fn normalize(&mut self) {
-        let len = self.length();
-        self.div_assign(Vec3::<T>::new(len, len, len));
-    }
-
-    pub fn get_normalized(&self) -> Self {
-        let len = self.length();
-        self.div(Vec3::<T>::new(len, len, len))
-    }
-}
-
 impl Norm for Vec3<f32> {
     type Length = f32;
     fn length(self: &Self) -> Self::Length {
@@ -74,6 +58,39 @@ impl<T: ops::Add<T, Output = T> + Copy> ops::Add<&Vec3<T>> for &Vec3<T> {
                 self.t[2] + rhs.t[2],
             ],
         }
+    }
+}
+
+impl<T: ops::Add<T, Output = T> + Copy> ops::Add<Vec3<T>> for Vec3<T> {
+    type Output = Vec3<T>;
+
+    fn add(mut self, rhs: Vec3<T>) -> Self::Output {
+        self.t[0] = self.t[0] + rhs.t[0];
+        self.t[1] = self.t[1] + rhs.t[1];
+        self.t[2] = self.t[2] + rhs.t[2];
+        self
+    }
+}
+
+impl<T: ops::Add<T, Output = T> + Copy> ops::Add<&Vec3<T>> for Vec3<T> {
+    type Output = Vec3<T>;
+
+    fn add(mut self, rhs: &Vec3<T>) -> Self::Output {
+        self.t[0] = self.t[0] + rhs.t[0];
+        self.t[1] = self.t[1] + rhs.t[1];
+        self.t[2] = self.t[2] + rhs.t[2];
+        self
+    }
+}
+
+impl<T: ops::Add<T, Output = T> + Copy> ops::Add<Vec3<T>> for &Vec3<T> {
+    type Output = Vec3<T>;
+
+    fn add(self, mut rhs: Vec3<T>) -> Self::Output {
+        rhs.t[0] = self.t[0] + rhs.t[0];
+        rhs.t[1] = self.t[1] + rhs.t[1];
+        rhs.t[2] = self.t[2] + rhs.t[2];
+        rhs
     }
 }
 
@@ -121,6 +138,39 @@ impl<T: ops::Mul<T, Output = T> + Copy> ops::Mul<&Vec3<T>> for &Vec3<T> {
     }
 }
 
+impl<T: ops::Mul<T, Output = T> + Copy> ops::Mul<Vec3<T>> for Vec3<T> {
+    type Output = Vec3<T>;
+
+    fn mul(mut self, rhs: Vec3<T>) -> Self::Output {
+        self.t[0] = self.t[0] * rhs.t[0];
+        self.t[1] = self.t[1] * rhs.t[1];
+        self.t[2] = self.t[2] * rhs.t[2];
+        self
+    }
+}
+
+impl<T: ops::Mul<T, Output = T> + Copy> ops::Mul<Vec3<T>> for &Vec3<T> {
+    type Output = Vec3<T>;
+
+    fn mul(self, mut rhs: Vec3<T>) -> Self::Output {
+        rhs.t[0] = self.t[0] * rhs.t[0];
+        rhs.t[1] = self.t[1] * rhs.t[1];
+        rhs.t[2] = self.t[2] * rhs.t[2];
+        rhs
+    }
+}
+
+impl<T: ops::Mul<T, Output = T> + Copy> ops::Mul<&Vec3<T>> for Vec3<T> {
+    type Output = Vec3<T>;
+
+    fn mul(mut self, rhs: &Vec3<T>) -> Self::Output {
+        self.t[0] = self.t[0] * rhs.t[0];
+        self.t[1] = self.t[1] * rhs.t[1];
+        self.t[2] = self.t[2] * rhs.t[2];
+        self
+    }
+}
+
 impl<T: ops::MulAssign<T> + Copy> ops::MulAssign<&Vec3<T>> for Vec3<T> {
     fn mul_assign(&mut self, rhs: &Self) {
         self.t[0] *= rhs.t[0];
@@ -139,6 +189,17 @@ impl<T: ops::Mul<T, Output = T> + Copy> ops::Mul<T> for &Vec3<T> {
     }
 }
 
+impl<T: ops::Mul<T, Output = T> + Copy> ops::Mul<T> for Vec3<T> {
+    type Output = Vec3<T>;
+
+    fn mul(mut self, rhs: T) -> Self::Output {
+        self.t[0] = self.t[0] * rhs;
+        self.t[1] = self.t[1] * rhs;
+        self.t[2] = self.t[2] * rhs;
+        self
+    }
+}
+
 impl<T: ops::MulAssign<T> + Copy> ops::MulAssign<T> for Vec3<T> {
     fn mul_assign(&mut self, rhs: T) {
         self.t[0] *= rhs;
@@ -146,6 +207,7 @@ impl<T: ops::MulAssign<T> + Copy> ops::MulAssign<T> for Vec3<T> {
         self.t[2] *= rhs;
     }
 }
+
 
 impl<T: ops::Div<T, Output = T> + Copy> ops::Div<&Vec3<T>> for &Vec3<T> {
     type Output = Vec3<T>;
@@ -184,5 +246,29 @@ impl<T: ops::DivAssign<T> + Copy> ops::DivAssign<T> for Vec3<T> {
         self.t[0] /= rhs;
         self.t[1] /= rhs;
         self.t[2] /= rhs;
+    }
+}
+
+
+impl<T> Vec3<T>
+where
+    T: Copy,
+    Vec3<T>: Norm<Length = T> + DivAssign<T>
+{
+    pub fn get_normalized(&self) -> Self {
+        let mut result = *self;
+        result /= self.length();
+        result
+    }
+}
+
+impl<T> Vec3<T>
+where
+    T: Copy,
+    Vec3<T>: Norm<Length = T> + DivAssign<T>,
+{
+    pub fn normalize(&mut self) {
+        let len = self.length();
+        self.div_assign(len);
     }
 }
