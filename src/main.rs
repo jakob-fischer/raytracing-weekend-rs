@@ -1,39 +1,13 @@
-use std::fs::File;
-use std::io::Write;
-
 mod math;
 mod array;
+mod ppm_writer;
 
 use math::*;
 use array::Array2d;
 
 
-type Colour = Vec3<f32>;
-fn write_to_ppm(image: &Array2d<Colour>, filename: &str) {
-    let mut f = File::create(filename).expect("Unable to create file");
-    write!(
-        &mut f,
-        "P3\n{} {}\n255\n",
-        image.get_width(),
-        image.get_height()
-    );
-
-    for y in 0..image.get_height() {
-        for x in 0..image.get_width() {
-            let pixel = image.get(x, y);
-
-            write!(
-                &mut f,
-                "{} {} {}\n",
-                (pixel.t[0] * 255.0) as u8,
-                (pixel.t[1] * 255.0) as u8,
-                (pixel.t[2] * 255.0) as u8
-            ).unwrap();
-        }
-    }
-
-    f.flush().unwrap();
-}
+type Colour = Vec3<f64>;
+type Point = Vec3<f64>;
 
 fn main() {
     let nx = 200;
@@ -43,11 +17,11 @@ fn main() {
     for x in 0..nx {
         for y in 0..ny {
             *array.get_mut(x, y) =
-                Colour::new((x as f32) / (nx as f32), (y as f32) / (ny as f32), 0.2);
+                Colour::new((x as f64) / (nx as f64), (y as f64) / (ny as f64), 0.2);
         }
     }
 
     println!("Hello, world!");
 
-    write_to_ppm(&array, "test.ppm");
+    ppm_writer::write(&array, "test.ppm");
 }
