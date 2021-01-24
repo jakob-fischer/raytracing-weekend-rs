@@ -5,10 +5,10 @@ mod ppm_writer;
 use math::*;
 use array::Array2d;
 
-
 type Colour = Vec3<f64>;
 type Point = Vec3<f64>;
 type Direction = Vec3<f64>;
+
 
 struct Ray {
  origin : Point,
@@ -32,10 +32,6 @@ impl Ray {
 }
 
 
-
-
-
-
 fn main() {
     // image
     let aspect_ratio = 16.0 / 8.0;
@@ -55,7 +51,7 @@ fn main() {
     let mut array: Array2d<Colour> = Array2d::new_init(image_width, image_height, &Colour::new(0.0, 0.0, 0.0));
 
     for x in 0..image_width {
-        println!("Scanlines remaining: {}", image_width-x);
+        print!(".");
         for y in 0..image_height {
             let u = x as f64 / (image_width-1) as f64;
             let v = y as f64 / (image_height-1) as f64;
@@ -63,6 +59,7 @@ fn main() {
             *array.get_mut(x, image_height-y-1) = r.ray_color();
         }
     }
+    println!("");
 
     ppm_writer::write(&array, "test.ppm");
 }
