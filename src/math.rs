@@ -116,6 +116,39 @@ impl<T: ops::Sub<T, Output = T> + Copy> ops::Sub<&Vec3<T>> for &Vec3<T> {
     }
 }
 
+impl<T: ops::Sub<T, Output = T> + Copy> ops::Sub<Vec3<T>> for Vec3<T> {
+    type Output = Vec3<T>;
+
+    fn sub(mut self, rhs: Vec3<T>) -> Self::Output {
+        self.t[0] = self.t[0] - rhs.t[0];
+        self.t[1] = self.t[1] - rhs.t[1];
+        self.t[2] = self.t[2] - rhs.t[2];
+        self
+    }
+}
+
+impl<T: ops::Sub<T, Output = T> + Copy> ops::Sub<&Vec3<T>> for Vec3<T> {
+    type Output = Vec3<T>;
+
+    fn sub(mut self, rhs: &Vec3<T>) -> Self::Output {
+        self.t[0] = self.t[0] - rhs.t[0];
+        self.t[1] = self.t[1] - rhs.t[1];
+        self.t[2] = self.t[2] - rhs.t[2];
+        self
+    }
+}
+
+impl<T: ops::Sub<T, Output = T> + Copy> ops::Sub<Vec3<T>> for &Vec3<T> {
+    type Output = Vec3<T>;
+
+    fn sub(self, mut rhs: Vec3<T>) -> Self::Output {
+        rhs.t[0] = self.t[0] - rhs.t[0];
+        rhs.t[1] = self.t[1] - rhs.t[1];
+        rhs.t[2] = self.t[2] - rhs.t[2];
+        rhs
+    }
+}
+
 impl<T: ops::SubAssign<T> + Copy> ops::SubAssign<&Vec3<T>> for Vec3<T> {
     fn sub_assign(&mut self, rhs: &Self) {
         self.t[0] -= rhs.t[0];

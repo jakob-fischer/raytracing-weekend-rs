@@ -14,8 +14,6 @@ pub fn write(image: &Array2d<Vec3<f64>>, filename: &str) {
     ).unwrap();
 
     for y in 0..image.get_height() {
-        println!("Scanlines remaining: {}", image.get_height()-y);
-
         for x in 0..image.get_width() {
             let pixel = image.get(x, y);
 
