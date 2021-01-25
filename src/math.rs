@@ -18,6 +18,13 @@ impl<T: Add<T, Output = T> + Mul<T, Output = T> + Clone + Copy> Vec3<T> {
     }
 }
 
+impl<T: Add<T, Output = T> + Mul<T, Output = T> + Clone + Copy> Vec3<T> {
+    pub fn dot(self: &Vec3<T>, other: &Vec3<T>) -> T {
+        self.t[0] * other.t[0] + self.t[1] * other.t[1] + self.t[2] * other.t[2]
+    }
+}
+
+
 pub trait Norm {
     type Length;
     fn length(self: &Self) -> Self::Length;
