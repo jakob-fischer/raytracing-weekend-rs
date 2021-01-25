@@ -48,7 +48,7 @@ fn main() {
     let vertical = Direction::new(0.0, viewport_height, 0.0);
     let lower_left_corner = origin - horizontal*0.5 - vertical*0.5 - Point::new(0.0, 0.0, focal_length);
     
-    let mut array: Array2d<Colour> = Array2d::new_init(image_width, image_height, &Colour::new(0.0, 0.0, 0.0));
+    let mut array: Array2d<Colour> = Array2d::new(image_width, image_height, &Colour::new(0.0, 0.0, 0.0));
 
     for x in 0..image_width {
         print!(".");
@@ -56,7 +56,7 @@ fn main() {
             let u = x as f64 / (image_width-1) as f64;
             let v = y as f64 / (image_height-1) as f64;
             let r = Ray::new(origin, lower_left_corner + horizontal*u + vertical*v - origin);
-            *array.get_mut(x, image_height-y-1) = r.ray_color();
+            *array.get_mut(x, y) = r.ray_color();
         }
     }
     println!("");

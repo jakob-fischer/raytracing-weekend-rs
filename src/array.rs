@@ -4,18 +4,8 @@
         vec: Vec<T>,
     }
     
-    impl<T: Default> Array2d<T> {
-        pub fn new(width: usize, height: usize) -> Self {
-            Array2d::<T> {
-                width,
-                height,
-                vec: (0..(width * height)).map(|_| T::default()).collect(),
-            }
-        }
-    }
-    
     impl<T: Copy> Array2d<T> {
-        pub fn new_init(width: usize, height: usize, initial: &T) -> Self {
+        pub fn new(width: usize, height: usize, initial: &T) -> Self {
             Array2d::<T> {
                 width,
                 height,
