@@ -14,20 +14,20 @@ pub fn write(image: &Array2d<Vec3<f64>>, filename: &str) {
     )
     .unwrap();
 
-    let mut result = String::new();
-
-    for y in 0..image.get_height() {
-        for x in 0..image.get_width() {
+    let result = (0..image.get_height())
+        .map(|y| -> Vec<_> { (0..image.get_width()).map(|x| (x, y)).collect() })
+        .flatten()
+        .map(|(x, y)| {
             let pixel = image.get(x, y);
 
-            result += &format!(
+            format!(
                 "{} {} {}\n",
                 (pixel.t[0] * 255.0) as u8,
                 (pixel.t[1] * 255.0) as u8,
                 (pixel.t[2] * 255.0) as u8
-            );
-        }
-    }
+            )
+        })
+        .fold(String::new(), |mut acc, next| {  acc += &next;  acc  });
 
     write!(&mut f, "{}", &result).unwrap();
 
