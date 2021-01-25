@@ -30,6 +30,5 @@ pub fn write(image: &Array2d<Vec3<f64>>, filename: &str) {
         .fold(String::new(), |mut acc, next| {  acc += &next;  acc  });
 
     write!(&mut f, "{}", &result).unwrap();
-
     f.flush().unwrap();
 }
