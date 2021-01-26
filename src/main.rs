@@ -37,22 +37,30 @@ impl Ray {
         &(&self.direction * t) + &self.origin
     }
 
-    fn hit_sphere(&self, sphere: &Sphere) -> bool {
+    fn hit_sphere(&self, sphere: &Sphere) -> f64 {
         let oc = self.origin - sphere.center;
-        let a = self.direction.dot(&self.direction);
-        let b = 2.0 * oc.dot(&self.direction);
-        let c = oc.dot(&oc) - sphere.radius * sphere.radius;
-        let discriminant = b * b - 4.0 * a * c;
-        return discriminant > 0.0;
+        let a = self.direction.squared_length();
+        let half_b = oc.dot(&self.direction);
+        let c = oc.squared_length() - sphere.radius * sphere.radius;
+        let discriminant = half_b * half_b - a * c;
+
+        if discriminant < 0.0 {
+            -1.0
+        } else {
+            (-half_b - discriminant.sqrt()) / a
+        }
     }
 
     fn ray_color(&self) -> Colour {
-        if self.hit_sphere(&Sphere::new(&Point::new(0.0, 0.0, -1.0), 0.5)) {
-            return Colour::new(1.0, 0.0, 0.0);
+        let t = self.hit_sphere(&Sphere::new(&Point::new(0.0, 0.0, -1.0), 0.5));
+        if t > 0.0 {
+            let n = (self.at(t)-Point::new(0.0, 0.0, -1.0)).get_normalized();
+            return (n+Colour::new(1.0, 1.0, 1.0))*0.5;
         }
+
         let unit_direction = self.direction.get_normalized();
-        let t = 0.5 * (unit_direction.t[1] + 1.0);
-        Colour::new(1.0, 1.0, 1.0) * (1.0 - t) + Colour::new(0.5, 0.7, 1.0) * t
+        let t = 0.5 *(unit_direction.dot(&Direction::new(0.0, 1.0, 0.0)) + 1.0) ;
+        Colour::new(1.0, 1.0, 1.0)*(1.0-t) + Colour::new(0.5, 0.7, 1.0)*t
     }
 }
 
