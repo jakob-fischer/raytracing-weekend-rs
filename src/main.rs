@@ -18,11 +18,42 @@ struct HitRecord {
     point: Point,
     normal: Direction,
     t: f64,
-    front_face : bool,
+    front_face: bool,
 }
 
 trait Hittable {
     fn hit(&self, ray: &Ray, r: (f64, f64)) -> Option<HitRecord>;
+}
+
+struct HittableList {
+    hittable: Vec<Box<dyn Hittable>>,
+}
+
+impl HittableList {
+    fn new() -> HittableList {
+        HittableList {
+            hittable: Vec::new(),
+        }
+    }
+
+    fn clear(&mut self) {
+        self.hittable.clear();
+    }
+
+    fn add(&mut self, hittable: Box<dyn Hittable>) {
+        self.hittable.push(hittable);
+    }
+}
+
+impl Hittable for HittableList {
+    fn hit(&self, ray: &Ray, r: (f64, f64)) -> Option<HitRecord> {
+        self.hittable
+            .iter()
+            .map(|x| x.hit(ray, (0.0, 1000.0)))
+            .filter(|x| x.is_some())
+            .map(|x| x.unwrap())
+            .min_by(|x, y| x.t.partial_cmp(&y.t).unwrap())
+    }
 }
 
 struct Sphere {
@@ -52,12 +83,16 @@ impl Hittable for Sphere {
             }
 
             let point = ray.at(root);
-            let outward_normal =(point - self.center) * (1.0 / self.radius);
-            let front_face  = ray.direction.dot(&outward_normal) < 0.0;
+            let outward_normal = (point - self.center) * (1.0 / self.radius);
+            let front_face = ray.direction.dot(&outward_normal) < 0.0;
 
             Some(HitRecord {
                 point,
-                normal: if front_face { outward_normal } else {-outward_normal },
+                normal: if front_face {
+                    outward_normal
+                } else {
+                    -outward_normal
+                },
                 t: root,
                 front_face,
             })
