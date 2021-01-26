@@ -54,6 +54,16 @@ impl<T: ops::Neg<Output = T> + Copy> ops::Neg for &Vec3<T> {
     }
 }
 
+impl<T: ops::Neg<Output = T> + Copy> ops::Neg for Vec3<T> {
+    type Output = Vec3<T>;
+
+    fn neg(self) -> Self::Output {
+        Vec3::<T> {
+            t: [-self.t[0], -self.t[1], -self.t[2]],
+        }
+    }
+}
+
 impl<T: ops::Add<T, Output = T> + Copy> ops::Add<&Vec3<T>> for &Vec3<T> {
     type Output = Vec3<T>;
 

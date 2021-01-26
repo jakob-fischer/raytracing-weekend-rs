@@ -18,6 +18,7 @@ struct HitRecord {
     point: Point,
     normal: Direction,
     t: f64,
+    front_face : bool,
 }
 
 trait Hittable {
@@ -51,11 +52,14 @@ impl Hittable for Sphere {
             }
 
             let point = ray.at(root);
+            let outward_normal =(point - self.center) * (1.0 / self.radius);
+            let front_face  = ray.direction.dot(&outward_normal) < 0.0;
 
             Some(HitRecord {
                 point,
-                normal: (point - self.center) * (1.0 / self.radius),
+                normal: if front_face { outward_normal } else {-outward_normal },
                 t: root,
+                front_face,
             })
         }
     }
