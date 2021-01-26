@@ -14,9 +14,48 @@ struct Ray {
     direction: Direction,
 }
 
+struct HitRecord {
+    point : Point,
+    normal : Direction,
+    t : f64,
+}
+
+trait Hittable {
+    fn hit(&self, ray : &Ray, r : (f64, f64)) -> Option<HitRecord>;
+}
+
 struct Sphere {
     center: Point,
     radius: f64,
+}
+
+impl Hittable for Sphere {
+    fn hit(&self, ray : &Ray, (t_min, t_max) : (f64, f64)) -> Option<HitRecord> {
+        let oc = ray.origin - self.center;
+        let a = ray.direction.squared_length();
+        let half_b = oc.dot(&ray.direction);
+        let c = oc.squared_length() - self.radius * self.radius;
+        let discriminant = half_b * half_b - a * c;
+
+        if discriminant < 0.0 {
+            None
+        } else {
+            let sqrtd = discriminant.sqrt();
+        
+            // Find the nearest root that lies in the acceptable range.
+            let mut root = (-half_b - sqrtd) / a;
+            if root < t_min || t_max < root {
+                root = (-half_b + sqrtd) / a;
+                if root < t_min || t_max < root {
+                    return None;
+                }
+            }
+
+            let point = ray.at(root);
+
+            Some(HitRecord{ point , normal : (point - self.center)*(1.0/self.radius), t : root })
+        }
+    }
 }
 
 impl Sphere {
@@ -37,25 +76,9 @@ impl Ray {
         &(&self.direction * t) + &self.origin
     }
 
-    fn hit_sphere(&self, sphere: &Sphere) -> f64 {
-        let oc = self.origin - sphere.center;
-        let a = self.direction.squared_length();
-        let half_b = oc.dot(&self.direction);
-        let c = oc.squared_length() - sphere.radius * sphere.radius;
-        let discriminant = half_b * half_b - a * c;
-
-        if discriminant < 0.0 {
-            -1.0
-        } else {
-            (-half_b - discriminant.sqrt()) / a
-        }
-    }
-
     fn ray_color(&self) -> Colour {
-        let t = self.hit_sphere(&Sphere::new(&Point::new(0.0, 0.0, -1.0), 0.5));
-        if t > 0.0 {
-            let n = (self.at(t)-Point::new(0.0, 0.0, -1.0)).get_normalized();
-            return (n+Colour::new(1.0, 1.0, 1.0))*0.5;
+        if let Some(record) = Sphere::new(&Point::new(0.0, 0.0, -1.0), 0.5).hit(self, (0.0, 1000.0)) {
+            return (record.normal+Colour::new(1.0, 1.0, 1.0))*0.5;
         }
 
         let unit_direction = self.direction.get_normalized();
