@@ -15,13 +15,13 @@ struct Ray {
 }
 
 struct HitRecord {
-    point : Point,
-    normal : Direction,
-    t : f64,
+    point: Point,
+    normal: Direction,
+    t: f64,
 }
 
 trait Hittable {
-    fn hit(&self, ray : &Ray, r : (f64, f64)) -> Option<HitRecord>;
+    fn hit(&self, ray: &Ray, r: (f64, f64)) -> Option<HitRecord>;
 }
 
 struct Sphere {
@@ -30,7 +30,7 @@ struct Sphere {
 }
 
 impl Hittable for Sphere {
-    fn hit(&self, ray : &Ray, (t_min, t_max) : (f64, f64)) -> Option<HitRecord> {
+    fn hit(&self, ray: &Ray, (t_min, t_max): (f64, f64)) -> Option<HitRecord> {
         let oc = ray.origin - self.center;
         let a = ray.direction.squared_length();
         let half_b = oc.dot(&ray.direction);
@@ -41,7 +41,6 @@ impl Hittable for Sphere {
             None
         } else {
             let sqrtd = discriminant.sqrt();
-        
             // Find the nearest root that lies in the acceptable range.
             let mut root = (-half_b - sqrtd) / a;
             if root < t_min || t_max < root {
@@ -53,7 +52,11 @@ impl Hittable for Sphere {
 
             let point = ray.at(root);
 
-            Some(HitRecord{ point , normal : (point - self.center)*(1.0/self.radius), t : root })
+            Some(HitRecord {
+                point,
+                normal: (point - self.center) * (1.0 / self.radius),
+                t: root,
+            })
         }
     }
 }
@@ -77,13 +80,14 @@ impl Ray {
     }
 
     fn ray_color(&self) -> Colour {
-        if let Some(record) = Sphere::new(&Point::new(0.0, 0.0, -1.0), 0.5).hit(self, (0.0, 1000.0)) {
-            return (record.normal+Colour::new(1.0, 1.0, 1.0))*0.5;
+        if let Some(record) = Sphere::new(&Point::new(0.0, 0.0, -1.0), 0.5).hit(self, (0.0, 1000.0))
+        {
+            return (record.normal + Colour::new(1.0, 1.0, 1.0)) * 0.5;
         }
 
         let unit_direction = self.direction.get_normalized();
-        let t = 0.5 *(unit_direction.dot(&Direction::new(0.0, 1.0, 0.0)) + 1.0) ;
-        Colour::new(1.0, 1.0, 1.0)*(1.0-t) + Colour::new(0.5, 0.7, 1.0)*t
+        let t = 0.5 * (unit_direction.dot(&Direction::new(0.0, 1.0, 0.0)) + 1.0);
+        Colour::new(1.0, 1.0, 1.0) * (1.0 - t) + Colour::new(0.5, 0.7, 1.0) * t
     }
 }
 
