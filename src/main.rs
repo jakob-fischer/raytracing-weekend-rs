@@ -5,6 +5,10 @@ mod ppm_writer;
 use array::Array2d;
 use math::*;
 
+fn degrees_to_radians( degrees : f64) -> f64 {
+    return degrees * std::f64::consts::PI / 180.0;
+}
+
 type Colour = Vec3<f64>;
 type Point = Vec3<f64>;
 type Direction = Vec3<f64>;
@@ -49,7 +53,7 @@ impl Hittable for HittableList {
     fn hit(&self, ray: &Ray, r: (f64, f64)) -> Option<HitRecord> {
         self.hittable
             .iter()
-            .map(|x| x.hit(ray, (0.0, 1000.0)))
+            .map(|x| x.hit(ray, (0.0, f64::INFINITY)))
             .filter(|x| x.is_some())
             .map(|x| x.unwrap())
             .min_by(|x, y| x.t.partial_cmp(&y.t).unwrap())
@@ -118,10 +122,9 @@ impl Ray {
         &(&self.direction * t) + &self.origin
     }
 
-    fn ray_color(&self) -> Colour {
-        if let Some(record) = Sphere::new(&Point::new(0.0, 0.0, -1.0), 0.5).hit(self, (0.0, 1000.0))
-        {
-            return (record.normal + Colour::new(1.0, 1.0, 1.0)) * 0.5;
+    fn ray_color(&self, world : &dyn Hittable) -> Colour {
+        if let Some(record) = world.hit(self, (0.0, f64::INFINITY)) {
+            return (record.normal + Colour::new(1.0,1.0,1.0))*0.5;
         }
 
         let unit_direction = self.direction.get_normalized();
@@ -135,6 +138,11 @@ fn main() {
     let aspect_ratio = 16.0 / 8.0;
     let image_width = 400 as usize;
     let image_height = (image_width as f64 / aspect_ratio) as usize;
+
+    // world
+    let mut world = HittableList::new();
+    world.add(Box::new(Sphere::new(&Point::new(0.0, 0.0, -1.0), 0.5)));
+    world.add(Box::new(Sphere::new(&Point::new(0.0, -100.5, -1.0), 100.0)));
 
     // camera
     let viewport_height = 2.0;
@@ -158,7 +166,7 @@ fn main() {
                 origin,
                 lower_left_corner + horizontal * u + vertical * v - origin,
             );
-            *array.get_mut(x, y) = r.ray_color();
+            *array.get_mut(x, y) = r.ray_color(&world);
         }
     }
     println!("");
