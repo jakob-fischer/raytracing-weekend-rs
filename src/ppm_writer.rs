@@ -4,6 +4,16 @@ use std::io::Write;
 use super::array::Array2d;
 use super::math::*;
 
+fn clamp(input : f64, min : f64, max : f64) -> f64 {
+    if input < min {
+        min
+    } else if input > max {
+        max
+    } else {
+        input
+    }
+}
+
 pub fn write(image: &Array2d<Vec3<f64>>, filename: &str) {
     let mut f = File::create(filename).expect("Unable to create file");
     write!(
@@ -16,12 +26,15 @@ pub fn write(image: &Array2d<Vec3<f64>>, filename: &str) {
 
     let get_string_for_pixel = |(x, y)| {
         let pixel = image.get(x, y);
+        let clamp = |x| {
+            clamp(x, 0.0, 0.999)
+        };
 
         format!(
             "{} {} {}\n",
-            (pixel.t[0] * 255.0) as u8,
-            (pixel.t[1] * 255.0) as u8,
-            (pixel.t[2] * 255.0) as u8
+            (clamp(pixel.t[0]) * 255.0) as u8,
+            (clamp(pixel.t[1]) * 255.0) as u8,
+            (clamp(pixel.t[2]) * 255.0) as u8
         )
     };
 
