@@ -19,6 +19,16 @@ fn degrees_to_radians(degrees: f64) -> f64 {
     return degrees * std::f64::consts::PI / 180.0;
 }
 
+impl Vec3<f64> {
+    fn is_almost_zero(&self) -> bool {
+        self.squared_length() < 0e-14
+    }
+
+    fn reflect(&self, n: &Vec3<f64>) -> Vec3<f64> {
+        self - *n * self.dot(n) * 2.0
+    }
+}
+
 fn random_unit_sphere(rng: &mut ThreadRng) -> Direction {
     let dist = Uniform::new(-1.0, 1.0);
     let mut sample = || rng.sample(dist);
@@ -66,15 +76,55 @@ struct Lambertian {
 
 impl Lambertian {
     fn new(albedo: &Colour) -> Self {
-        Lambertian { albedo: *albedo }
+        Self { albedo: *albedo }
     }
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord, rng: &mut ThreadRng) -> Option<ScatterRecord> {
+    fn scatter(
+        &self,
+        r_in: &Ray,
+        hit_record: &HitRecord,
+        rng: &mut ThreadRng,
+    ) -> Option<ScatterRecord> {
         let scatter_direction = hit_record.normal + random_unit_vector(rng);
+        let scatter_direction = if scatter_direction.is_almost_zero() {
+            hit_record.normal
+        } else {
+            scatter_direction
+        };
+
         let scattered_ray = Ray::new(hit_record.point, scatter_direction);
-        Some(ScatterRecord{ attenuation : self.albedo, scattered_ray })
+        Some(ScatterRecord {
+            attenuation: self.albedo,
+            scattered_ray,
+        })
+    }
+}
+
+struct Metal {
+    albedo: Colour,
+}
+
+impl Metal {
+    fn new(albedo: &Colour) -> Self {
+        Self { albedo: *albedo }
+    }
+}
+
+impl Material for Metal {
+    fn scatter(
+        &self,
+        r_in: &Ray,
+        hit_record: &HitRecord,
+        rng: &mut ThreadRng,
+    ) -> Option<ScatterRecord> {
+        let reflected = r_in.direction.reflect(&hit_record.normal);
+        let scattered_ray = Ray::new(hit_record.point, reflected);
+        Some(ScatterRecord {
+            attenuation: self.albedo,
+            scattered_ray,
+        })
     }
 }
 
@@ -192,11 +242,13 @@ impl Ray {
             Colour::new(0.0, 0.0, 0.0)
         } else if let Some(record) = world.hit(self, (0.001, f64::INFINITY)) {
             if let Some(scatter_record) = record.material.scatter(self, &record, rng) {
-                scatter_record.attenuation * scatter_record.scattered_ray.ray_color(world, rng, depth-1)
+                scatter_record.attenuation
+                    * scatter_record
+                        .scattered_ray
+                        .ray_color(world, rng, depth - 1)
             } else {
                 Colour::new(0.0, 0.0, 0.0)
             }
-
         } else {
             let unit_direction = self.direction.get_normalized();
             let t = 0.5 * (unit_direction.dot(&Direction::new(0.0, 1.0, 0.0)) + 1.0);
@@ -263,6 +315,11 @@ fn main() {
     let material_center =
         Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.7, 0.3, 0.3))));
 
+    let material_left =
+        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.8, 0.8, 0.8))));
+    let material_right =
+        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.8, 0.6, 0.2))));
+
     let mut world = HittableList::new();
     world.add(Box::new(Sphere::new(
         &Point::new(0.0, 0.0, -1.0),
@@ -273,6 +330,17 @@ fn main() {
         &Point::new(0.0, -100.5, -1.0),
         100.0,
         material_ground,
+    )));
+
+    world.add(Box::new(Sphere::new(
+        &Point::new(-1.0, 0.0, -1.0),
+        0.5,
+        material_left,
+    )));
+    world.add(Box::new(Sphere::new(
+        &Point::new(1.0, 0.0, -1.0),
+        0.5,
+        material_right,
     )));
 
     // camera
