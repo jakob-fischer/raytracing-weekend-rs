@@ -34,9 +34,9 @@ fn main() {
         Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.7, 0.3, 0.3))));
 
     let material_left =
-        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.8, 0.8, 0.8), 0.3)));
+        Rc::<Box<dyn Material>>::new(Box::new(Dielectric::new(1.5)));
     let material_right =
-        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.8, 0.6, 0.2), 1.0)));
+        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.8, 0.6, 0.2), 0.0)));
 
     let mut world = HittableList::new();
     world.add(Box::new(Sphere::new(
