@@ -104,11 +104,12 @@ impl Material for Lambertian {
 
 struct Metal {
     albedo: Colour,
+    fuzz : f64
 }
 
 impl Metal {
-    fn new(albedo: &Colour) -> Self {
-        Self { albedo: *albedo }
+    fn new(albedo: &Colour, fuzz : f64) -> Self {
+        Self { albedo: *albedo, fuzz}
     }
 }
 
@@ -120,7 +121,7 @@ impl Material for Metal {
         rng: &mut ThreadRng,
     ) -> Option<ScatterRecord> {
         let reflected = r_in.direction.reflect(&hit_record.normal);
-        let scattered_ray = Ray::new(hit_record.point, reflected);
+        let scattered_ray = Ray::new(hit_record.point, reflected + random_unit_sphere(rng)*self.fuzz);
         Some(ScatterRecord {
             attenuation: self.albedo,
             scattered_ray,
@@ -218,9 +219,9 @@ impl Hittable for Sphere {
 }
 
 impl Sphere {
-    fn new(center: &Point, radius: f64, material: Rc<Box<dyn Material>>) -> Self {
+    fn new(center: Point, radius: f64, material: Rc<Box<dyn Material>>) -> Self {
         Sphere {
-            center: *center,
+            center,
             radius,
             material: material.clone(),
         }
@@ -316,29 +317,29 @@ fn main() {
         Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.7, 0.3, 0.3))));
 
     let material_left =
-        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.8, 0.8, 0.8))));
+        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.8, 0.8, 0.8), 0.3)));
     let material_right =
-        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.8, 0.6, 0.2))));
+        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.8, 0.6, 0.2), 1.0)));
 
     let mut world = HittableList::new();
     world.add(Box::new(Sphere::new(
-        &Point::new(0.0, 0.0, -1.0),
+        Point::new(0.0, 0.0, -1.0),
         0.5,
         material_center,
     )));
     world.add(Box::new(Sphere::new(
-        &Point::new(0.0, -100.5, -1.0),
+        Point::new(0.0, -100.5, -1.0),
         100.0,
         material_ground,
     )));
 
     world.add(Box::new(Sphere::new(
-        &Point::new(-1.0, 0.0, -1.0),
+        Point::new(-1.0, 0.0, -1.0),
         0.5,
         material_left,
     )));
     world.add(Box::new(Sphere::new(
-        &Point::new(1.0, 0.0, -1.0),
+        Point::new(1.0, 0.0, -1.0),
         0.5,
         material_right,
     )));
