@@ -2,6 +2,7 @@ extern crate rand;
 use rand::distributions::Uniform;
 use rand::prelude::ThreadRng;
 use rand::{thread_rng, Rng};
+use std::rc::Rc;
 
 mod array;
 mod math;
@@ -35,7 +36,7 @@ fn random_unit_vector(rng: &mut ThreadRng) -> Direction {
     random_unit_sphere(rng).get_normalized()
 }
 
-fn random_in_hemisphere(normal : &Direction, rng: &mut ThreadRng) -> Direction {
+fn random_in_hemisphere(normal: &Direction, rng: &mut ThreadRng) -> Direction {
     let random_in_unit_sphere = random_unit_sphere(rng);
 
     if normal.dot(&random_in_unit_sphere) > 0.0 {
@@ -50,11 +51,39 @@ struct Ray {
     direction: Direction,
 }
 
+struct ScatterRecord {
+    attenuation: Colour,
+    scattered_ray: Ray,
+}
+
+trait Material {
+    fn scatter(&self, r_in: &Ray, hit: &HitRecord, rng: &mut ThreadRng) -> Option<ScatterRecord>;
+}
+
+struct Lambertian {
+    albedo: Colour,
+}
+
+impl Lambertian {
+    fn new(albedo: &Colour) -> Self {
+        Lambertian { albedo: *albedo }
+    }
+}
+
+impl Material for Lambertian {
+    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord, rng: &mut ThreadRng) -> Option<ScatterRecord> {
+        let scatter_direction = hit_record.normal + random_unit_vector(rng);
+        let scattered_ray = Ray::new(hit_record.point, scatter_direction);
+        Some(ScatterRecord{ attenuation : self.albedo, scattered_ray })
+    }
+}
+
 struct HitRecord {
     point: Point,
     normal: Direction,
     t: f64,
     front_face: bool,
+    material: Rc<Box<dyn Material>>,
 }
 
 trait Hittable {
@@ -95,6 +124,7 @@ impl Hittable for HittableList {
 struct Sphere {
     center: Point,
     radius: f64,
+    material: Rc<Box<dyn Material>>,
 }
 
 impl Hittable for Sphere {
@@ -131,16 +161,18 @@ impl Hittable for Sphere {
                 },
                 t: root,
                 front_face,
+                material: self.material.clone(),
             })
         }
     }
 }
 
 impl Sphere {
-    fn new(center: &Point, radius: f64) -> Self {
+    fn new(center: &Point, radius: f64, material: Rc<Box<dyn Material>>) -> Self {
         Sphere {
             center: *center,
             radius,
+            material: material.clone(),
         }
     }
 }
@@ -154,13 +186,17 @@ impl Ray {
         &(&self.direction * t) + &self.origin
     }
 
-    fn ray_color(&self, world: &dyn Hittable, rng: &mut ThreadRng, max_depth: i32) -> Colour {
+    fn ray_color(&self, world: &dyn Hittable, rng: &mut ThreadRng, depth: i32) -> Colour {
         // If we've exceeded the ray bounce limit, no more light is gathered.
-        if max_depth <= 0 {
+        if depth <= 0 {
             Colour::new(0.0, 0.0, 0.0)
         } else if let Some(record) = world.hit(self, (0.001, f64::INFINITY)) {
-            let target = record.point + record.normal + random_in_hemisphere(&record.normal, rng);
-            Ray::new(record.point, target - record.point).ray_color(world, rng, max_depth - 1) * 0.5
+            if let Some(scatter_record) = record.material.scatter(self, &record, rng) {
+                scatter_record.attenuation * scatter_record.scattered_ray.ray_color(world, rng, depth-1)
+            } else {
+                Colour::new(0.0, 0.0, 0.0)
+            }
+
         } else {
             let unit_direction = self.direction.get_normalized();
             let t = 0.5 * (unit_direction.dot(&Direction::new(0.0, 1.0, 0.0)) + 1.0);
@@ -222,9 +258,22 @@ fn main() {
     let max_depth = 50;
 
     // world
+    let material_ground =
+        Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.8, 0.8, 0.0))));
+    let material_center =
+        Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.7, 0.3, 0.3))));
+
     let mut world = HittableList::new();
-    world.add(Box::new(Sphere::new(&Point::new(0.0, 0.0, -1.0), 0.5)));
-    world.add(Box::new(Sphere::new(&Point::new(0.0, -100.5, -1.0), 100.0)));
+    world.add(Box::new(Sphere::new(
+        &Point::new(0.0, 0.0, -1.0),
+        0.5,
+        material_center,
+    )));
+    world.add(Box::new(Sphere::new(
+        &Point::new(0.0, -100.5, -1.0),
+        100.0,
+        material_ground,
+    )));
 
     // camera
     let camera = Camera::new(aspect_ratio);
