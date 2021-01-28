@@ -71,7 +71,7 @@ impl Hittable for HittableList {
     fn hit(&self, ray: &Ray, r: (f64, f64)) -> Option<HitRecord> {
         self.hittable
             .iter()
-            .map(|x| x.hit(ray, (0.0, f64::INFINITY)))
+            .map(|x| x.hit(ray, r))
             .filter(|x| x.is_some())
             .map(|x| x.unwrap())
             .min_by(|x, y| x.t.partial_cmp(&y.t).unwrap())
