@@ -1,6 +1,7 @@
 extern crate rand;
 use rand::distributions::Uniform;
-use rand::{thread_rng, Rng, RngCore};
+use rand::prelude::ThreadRng;
+use rand::{thread_rng, Rng};
 
 mod array;
 mod math;
@@ -9,13 +10,26 @@ mod ppm_writer;
 use array::Array2d;
 use math::*;
 
+type Colour = Vec3<f64>;
+type Point = Vec3<f64>;
+type Direction = Vec3<f64>;
+
 fn degrees_to_radians(degrees: f64) -> f64 {
     return degrees * std::f64::consts::PI / 180.0;
 }
 
-type Colour = Vec3<f64>;
-type Point = Vec3<f64>;
-type Direction = Vec3<f64>;
+fn random_unit_sphere(rng: &mut ThreadRng) -> Point {
+    let dist = Uniform::new(-1.0, 1.0);
+    let mut sample = || rng.sample(dist);
+
+    loop {
+        let candidate = Point::new(sample(), sample(), sample());
+
+        if candidate.squared_length() <= 1.0 {
+            return candidate;
+        }
+    }
+}
 
 struct Ray {
     origin: Point,
@@ -126,14 +140,18 @@ impl Ray {
         &(&self.direction * t) + &self.origin
     }
 
-    fn ray_color(&self, world: &dyn Hittable) -> Colour {
-        if let Some(record) = world.hit(self, (0.0, f64::INFINITY)) {
-            return (record.normal + Colour::new(1.0, 1.0, 1.0)) * 0.5;
+    fn ray_color(&self, world: &dyn Hittable, rng: &mut ThreadRng, max_depth: i32) -> Colour {
+        // If we've exceeded the ray bounce limit, no more light is gathered.
+        if max_depth <= 0 {
+            Colour::new(0.0, 0.0, 0.0)
+        } else if let Some(record) = world.hit(self, (0.001, f64::INFINITY)) {
+            let target = record.point + record.normal + random_unit_sphere(rng);
+            Ray::new(record.point, target - record.point).ray_color(world, rng, max_depth - 1) * 0.5
+        } else {
+            let unit_direction = self.direction.get_normalized();
+            let t = 0.5 * (unit_direction.dot(&Direction::new(0.0, 1.0, 0.0)) + 1.0);
+            Colour::new(1.0, 1.0, 1.0) * (1.0 - t) + Colour::new(0.5, 0.7, 1.0) * t
         }
-
-        let unit_direction = self.direction.get_normalized();
-        let t = 0.5 * (unit_direction.dot(&Direction::new(0.0, 1.0, 0.0)) + 1.0);
-        Colour::new(1.0, 1.0, 1.0) * (1.0 - t) + Colour::new(0.5, 0.7, 1.0) * t
     }
 }
 
@@ -187,6 +205,7 @@ fn main() {
     let image_width = 400 as usize;
     let image_height = (image_width as f64 / aspect_ratio) as usize;
     let sample_number = 100;
+    let max_depth = 50;
 
     // world
     let mut world = HittableList::new();
@@ -199,13 +218,13 @@ fn main() {
     let mut array: Array2d<Colour> =
         Array2d::new(image_width, image_height, &Colour::new(0.0, 0.0, 0.0));
     for x in 0..image_width {
-        print!(".");
+        println!("{} lines remaining", image_width - x);
         for y in 0..image_height {
             let colour: Colour = (0..100)
                 .map(|_| {
                     let u = (x as f64 + rng.sample(dist)) / (image_width - 1) as f64;
                     let v = (y as f64 + rng.sample(dist)) / (image_height - 1) as f64;
-                    camera.get_ray(u, v).ray_color(&world)
+                    camera.get_ray(u, v).ray_color(&world, &mut rng, max_depth)
                 })
                 .fold(Colour::new(0.0, 0.0, 0.0), |old, n| old + n);
 

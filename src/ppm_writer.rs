@@ -26,8 +26,8 @@ pub fn write(image: &Array2d<Vec3<f64>>, filename: &str) {
 
     let get_string_for_pixel = |(x, y)| {
         let pixel = image.get(x, y);
-        let clamp = |x| {
-            clamp(x, 0.0, 0.999)
+        let clamp = |x : f64| {
+            clamp(x.sqrt(), 0.0, 0.999)
         };
 
         format!(
