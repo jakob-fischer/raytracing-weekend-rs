@@ -18,16 +18,30 @@ fn degrees_to_radians(degrees: f64) -> f64 {
     return degrees * std::f64::consts::PI / 180.0;
 }
 
-fn random_unit_sphere(rng: &mut ThreadRng) -> Point {
+fn random_unit_sphere(rng: &mut ThreadRng) -> Direction {
     let dist = Uniform::new(-1.0, 1.0);
     let mut sample = || rng.sample(dist);
 
     loop {
-        let candidate = Point::new(sample(), sample(), sample());
+        let candidate = Direction::new(sample(), sample(), sample());
 
         if candidate.squared_length() <= 1.0 {
             return candidate;
         }
+    }
+}
+
+fn random_unit_vector(rng: &mut ThreadRng) -> Direction {
+    random_unit_sphere(rng).get_normalized()
+}
+
+fn random_in_hemisphere(normal : &Direction, rng: &mut ThreadRng) -> Direction {
+    let random_in_unit_sphere = random_unit_sphere(rng);
+
+    if normal.dot(&random_in_unit_sphere) > 0.0 {
+        random_in_unit_sphere
+    } else {
+        -random_in_unit_sphere
     }
 }
 
@@ -145,7 +159,7 @@ impl Ray {
         if max_depth <= 0 {
             Colour::new(0.0, 0.0, 0.0)
         } else if let Some(record) = world.hit(self, (0.001, f64::INFINITY)) {
-            let target = record.point + record.normal + random_unit_sphere(rng);
+            let target = record.point + record.normal + random_in_hemisphere(&record.normal, rng);
             Ray::new(record.point, target - record.point).ray_color(world, rng, max_depth - 1) * 0.5
         } else {
             let unit_direction = self.direction.get_normalized();
