@@ -154,15 +154,28 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(aspect_ratio: f64) -> Self {
-        let viewport_height = 2.0;
+    pub fn new(
+        lookfrom: Point,
+        lookat: Point,
+        vup: Direction,
+        vfov: f64,
+        aspect_ratio: f64,
+    ) -> Self {
+        let theta = degrees_to_radians(vfov);
+        let h = (theta / 2.0).tan();
+        let viewport_height = 2.0 * h;
         let viewport_width = aspect_ratio * viewport_height;
-        let origin = Point::new(0.0, 0.0, 0.0);
-        let horizontal = Direction::new(viewport_width, 0.0, 0.0);
-        let vertical = Direction::new(0.0, viewport_height, 0.0);
+
+        let w = (lookfrom - lookat).get_normalized();
+        let u = vup.cross(&w).get_normalized();
+        let v = w.cross(&u);
+
+        let origin = lookfrom;
+        let horizontal = u * viewport_width;
+        let vertical = v * viewport_height;
+        let lower_left_corner = origin - horizontal*0.5 - vertical*0.5 - w;
+
         let focal_length = 1.0;
-        let lower_left_corner =
-            origin - horizontal * 0.5 - vertical * 0.5 - Point::new(0.0, 0.0, focal_length);
 
         Camera {
             viewport_height,

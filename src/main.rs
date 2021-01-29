@@ -11,8 +11,8 @@ mod rt_materials;
 
 use ppm_writer::Array2d;
 use rt_core::*;
-use rt_materials::*;
 use rt_hittables::*;
+use rt_materials::*;
 
 fn main() {
     // rng
@@ -32,8 +32,7 @@ fn main() {
     let material_center =
         Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.1, 0.2, 0.5))));
 
-    let material_left =
-        Rc::<Box<dyn Material>>::new(Box::new(Dielectric::new(1.5)));
+    let material_left = Rc::<Box<dyn Material>>::new(Box::new(Dielectric::new(1.5)));
     let material_right =
         Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.8, 0.6, 0.2), 0.0)));
 
@@ -66,7 +65,13 @@ fn main() {
     )));
 
     // camera
-    let camera = Camera::new(aspect_ratio);
+    let camera = Camera::new(
+        Point::new(-2.0, 2.0, 1.0),
+        Point::new(0.0, 0.0, -1.0),
+        Point::new(0.0, 1.0, 0.0),
+        90.0,
+        aspect_ratio,
+    );
 
     let mut array: Array2d<Colour> =
         Array2d::new(image_width, image_height, &Colour::new(0.0, 0.0, 0.0));

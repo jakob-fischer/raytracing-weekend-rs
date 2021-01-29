@@ -24,6 +24,15 @@ impl<T: Add<T, Output = T> + Mul<T, Output = T> + Clone + Copy> Vec3<T> {
     }
 }
 
+impl<T: Sub<T, Output = T> + Mul<T, Output = T> + Clone + Copy> Vec3<T> {
+    pub fn cross(self: &Vec3<T>, other: &Vec3<T>) -> Vec3<T> {
+        Self::new(
+            self.t[1] * other.t[2] - self.t[2] * other.t[1],
+            self.t[2] * other.t[0] - self.t[0] * other.t[2],
+            self.t[0] * other.t[1] - self.t[1] * other.t[0],
+        )
+    }
+}
 
 pub trait Norm {
     type Length;
@@ -258,7 +267,6 @@ impl<T: ops::MulAssign<T> + Copy> ops::MulAssign<T> for Vec3<T> {
     }
 }
 
-
 impl<T: ops::Div<T, Output = T> + Copy> ops::Div<&Vec3<T>> for &Vec3<T> {
     type Output = Vec3<T>;
 
@@ -299,11 +307,10 @@ impl<T: ops::DivAssign<T> + Copy> ops::DivAssign<T> for Vec3<T> {
     }
 }
 
-
 impl<T> Vec3<T>
 where
     T: Copy,
-    Vec3<T>: Norm<Length = T> + DivAssign<T>
+    Vec3<T>: Norm<Length = T> + DivAssign<T>,
 {
     pub fn get_normalized(&self) -> Self {
         let mut result = *self;
