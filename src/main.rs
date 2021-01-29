@@ -3,14 +3,13 @@ use rand::distributions::Uniform;
 use rand::{thread_rng, Rng};
 use std::rc::Rc;
 
-mod array;
 mod math;
 mod ppm_writer;
 mod rt_core;
 mod rt_hittables;
 mod rt_materials;
 
-use array::Array2d;
+use ppm_writer::Array2d;
 use rt_core::*;
 use rt_materials::*;
 use rt_hittables::*;
