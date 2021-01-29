@@ -30,7 +30,7 @@ fn main() {
     let material_ground =
         Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.8, 0.8, 0.0))));
     let material_center =
-        Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.7, 0.3, 0.3))));
+        Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.1, 0.2, 0.5))));
 
     let material_left =
         Rc::<Box<dyn Material>>::new(Box::new(Dielectric::new(1.5)));
@@ -52,6 +52,11 @@ fn main() {
     world.add(Box::new(Sphere::new(
         Point::new(-1.0, 0.0, -1.0),
         0.5,
+        material_left.clone(),
+    )));
+    world.add(Box::new(Sphere::new(
+        Point::new(-1.0, 0.0, -1.0),
+        -0.4,
         material_left,
     )));
     world.add(Box::new(Sphere::new(
