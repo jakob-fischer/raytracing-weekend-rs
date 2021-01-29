@@ -42,8 +42,17 @@ pub fn random_unit_sphere(rng: &mut ThreadRng) -> Direction {
     }
 }
 
-pub fn random_unit_vector(rng: &mut ThreadRng) -> Direction {
-    random_unit_sphere(rng).get_normalized()
+pub fn random_in_unit_disk(rng: &mut ThreadRng) -> Direction {
+    let dist = Uniform::new(-1.0, 1.0);
+    let mut sample = || rng.sample(dist);
+
+    loop {
+        let candidate = Direction::new(sample(), sample(), 0.0);
+
+        if candidate.squared_length() <= 1.0 {
+            return candidate;
+        }
+    }
 }
 
 pub fn random_in_hemisphere(normal: &Direction, rng: &mut ThreadRng) -> Direction {
@@ -91,10 +100,6 @@ impl HittableList {
 
     pub fn add(&mut self, hittable: Box<dyn Hittable>) {
         self.hittable.push(hittable);
-    }
-
-    fn clear(&mut self) {
-        self.hittable.clear();
     }
 }
 
@@ -144,13 +149,13 @@ impl Ray {
 }
 
 pub struct Camera {
-    viewport_height: f64,
-    viewport_width: f64,
-    focal_length: f64,
     origin: Point,
     horizontal: Direction,
     vertical: Direction,
     lower_left_corner: Vec3<f64>,
+    lens_radius : f64,
+    u : Vec3<f64>,
+    v : Vec3<f64>,
 }
 
 impl Camera {
@@ -160,6 +165,8 @@ impl Camera {
         vup: Direction,
         vfov: f64,
         aspect_ratio: f64,
+        aperture : f64,
+        focus_dist : f64
     ) -> Self {
         let theta = degrees_to_radians(vfov);
         let h = (theta / 2.0).tan();
@@ -171,27 +178,30 @@ impl Camera {
         let v = w.cross(&u);
 
         let origin = lookfrom;
-        let horizontal = u * viewport_width;
-        let vertical = v * viewport_height;
-        let lower_left_corner = origin - horizontal*0.5 - vertical*0.5 - w;
+        let horizontal =  u * (focus_dist * viewport_width);
+        let vertical = v * (focus_dist * viewport_height);
+        let lower_left_corner = origin - horizontal*0.5 - vertical*0.5 - w*focus_dist;
 
-        let focal_length = 1.0;
+        let lens_radius = aperture / 2.0;
 
         Camera {
-            viewport_height,
-            viewport_width,
-            focal_length,
             origin,
             horizontal,
             vertical,
             lower_left_corner,
+            lens_radius,
+            u,
+            v,
         }
     }
 
-    pub fn get_ray(&self, u: f64, v: f64) -> Ray {
+    pub fn get_ray(&self, s: f64, t: f64, rng: &mut ThreadRng) -> Ray {
+        let rd = random_in_unit_disk(rng) * self.lens_radius;
+        let offset = self.u * rd.t[0] + self.v * rd.t[1];
+
         Ray::new(
-            self.origin,
-            self.lower_left_corner + self.horizontal * u + self.vertical * v - self.origin,
+            self.origin + offset,
+            self.lower_left_corner + self.horizontal*s + self.vertical*t - self.origin - offset
         )
     }
 }

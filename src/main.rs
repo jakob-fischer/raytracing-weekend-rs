@@ -9,6 +9,7 @@ mod rt_core;
 mod rt_hittables;
 mod rt_materials;
 
+use math::*;
 use ppm_writer::Array2d;
 use rt_core::*;
 use rt_hittables::*;
@@ -65,12 +66,21 @@ fn main() {
     )));
 
     // camera
+
+    let lookfrom = Point::new(3.0, 3.0, 2.0);
+    let lookat = Point::new(0.0, 0.0, -1.0);
+    let vup = Point::new(0.0, 1.0, 0.0);
+    let dist_to_focus = (lookfrom - lookat).length();
+    let aperture = 2.0;
+
     let camera = Camera::new(
-        Point::new(-2.0, 2.0, 1.0),
-        Point::new(0.0, 0.0, -1.0),
-        Point::new(0.0, 1.0, 0.0),
-        90.0,
+        lookfrom,
+        lookat,
+        vup,
+        20.0,
         aspect_ratio,
+        aperture,
+        dist_to_focus,
     );
 
     let mut array: Array2d<Colour> =
@@ -82,7 +92,9 @@ fn main() {
                 .map(|_| {
                     let u = (x as f64 + rng.sample(dist)) / (image_width - 1) as f64;
                     let v = (y as f64 + rng.sample(dist)) / (image_height - 1) as f64;
-                    camera.get_ray(u, v).ray_color(&world, &mut rng, max_depth)
+                    camera
+                        .get_ray(u, v, &mut rng)
+                        .ray_color(&world, &mut rng, max_depth)
                 })
                 .fold(Colour::new(0.0, 0.0, 0.0), |old, n| old + n);
 
