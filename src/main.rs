@@ -1,5 +1,6 @@
 extern crate rand;
 use rand::distributions::Uniform;
+use rand::prelude::ThreadRng;
 use rand::{thread_rng, Rng};
 use std::rc::Rc;
 
@@ -15,63 +16,123 @@ use rt_core::*;
 use rt_hittables::*;
 use rt_materials::*;
 
+fn random_double(min: f64, max: f64, rng: &mut ThreadRng) -> f64 {
+    let dist = Uniform::new(min, max);
+    rng.sample(dist)
+}
+
+fn sample(rng: &mut ThreadRng) -> f64 {
+    let dist = Uniform::new(0.0, 1.0);
+    rng.sample(dist)
+}
+
+fn test(rng: &mut ThreadRng) -> f64 {
+    let mut sample = || -> f64 {
+        let dist = Uniform::new(0.0, 1.0);
+        rng.sample(dist)
+    };
+
+    let mut sample3 = || -> f64 {
+        sample() + sample()
+    };
+
+    sample3()+sample()
+}
+
+fn random_vec(min: f64, max: f64, rng: &mut ThreadRng) -> Vec3<f64> {
+    let dist = Uniform::new(min, max);
+    Vec3::<f64>::new(rng.sample(dist), rng.sample(dist), rng.sample(dist))
+}
+
+fn random_scene(rng: &mut ThreadRng) -> impl Hittable {
+    let material1 = Rc::<Box<dyn Material>>::new(Box::new(Dielectric::new(1.5)));
+    let material2 =
+        Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.4, 0.2, 0.1))));
+    let material3 =
+        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.7, 0.6, 0.5), 0.0)));
+    let ground_material =
+        Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.5, 0.5, 0.5))));
+
+    let mut world = HittableList::new();
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, -1000.0, 0.0),
+        1000.0,
+        ground_material,
+    )));
+
+    for a in -11..=11 {
+        for b in -11..11 {
+            let choose_mat = sample(rng);
+            let center = Point::new(
+                a as f64 + 0.9 * sample(rng),
+                0.2,
+                b as f64 + 0.9 * sample(rng),
+            );
+
+            if (center - Point::new(4.0, 0.2, 0.0)).length() > 0.9 {
+                if choose_mat < 0.8 {
+                    // diffuse
+                    let albedo = random_vec(0.0, 1.0, rng) * random_vec(0.0, 1.0, rng);
+                    let material = Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&albedo)));
+
+                    world.add(Box::new(Sphere::new(center, 0.2, material)));
+                } else if choose_mat < 0.95 {
+                    // metal
+                    let albedo = random_vec(0.5, 1.0, rng);
+                    let fuzz = random_double(0.0, 0.5, rng);
+                    let material =
+                        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&albedo, fuzz)));
+
+                    world.add(Box::new(Sphere::new(center, 0.2, material)));
+                } else {
+                    // glass
+                    let material = Rc::<Box<dyn Material>>::new(Box::new(Dielectric::new(1.5)));
+                    world.add(Box::new(Sphere::new(center, 0.2, material)));
+                }
+            }
+        }
+    }
+
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, 1.0, 0.0),
+        1.0,
+        material1,
+    )));
+    world.add(Box::new(Sphere::new(
+        Point::new(-4.0, 1.0, 0.0),
+        1.0,
+        material2,
+    )));
+    world.add(Box::new(Sphere::new(
+        Point::new(4.0, 1.0, 0.0),
+        1.0,
+        material3,
+    )));
+
+    world
+}
+
 fn main() {
     // rng
     let mut rng = thread_rng();
     let dist = Uniform::new(0.0, 1.0);
 
     // image
-    let aspect_ratio = 16.0 / 8.0;
-    let image_width = 400 as usize;
+    let aspect_ratio = 3.0 / 2.0;
+    let image_width = 1200;
     let image_height = (image_width as f64 / aspect_ratio) as usize;
-    let sample_number = 100;
+    let sample_number = 500;
     let max_depth = 50;
 
     // world
-    let material_ground =
-        Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.8, 0.8, 0.0))));
-    let material_center =
-        Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.1, 0.2, 0.5))));
-
-    let material_left = Rc::<Box<dyn Material>>::new(Box::new(Dielectric::new(1.5)));
-    let material_right =
-        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.8, 0.6, 0.2), 0.0)));
-
-    let mut world = HittableList::new();
-    world.add(Box::new(Sphere::new(
-        Point::new(0.0, 0.0, -1.0),
-        0.5,
-        material_center,
-    )));
-    world.add(Box::new(Sphere::new(
-        Point::new(0.0, -100.5, -1.0),
-        100.0,
-        material_ground,
-    )));
-
-    world.add(Box::new(Sphere::new(
-        Point::new(-1.0, 0.0, -1.0),
-        0.5,
-        material_left.clone(),
-    )));
-    world.add(Box::new(Sphere::new(
-        Point::new(-1.0, 0.0, -1.0),
-        -0.4,
-        material_left,
-    )));
-    world.add(Box::new(Sphere::new(
-        Point::new(1.0, 0.0, -1.0),
-        0.5,
-        material_right,
-    )));
+    let world = random_scene(&mut rng);
 
     // camera
-
-    let lookfrom = Point::new(3.0, 3.0, 2.0);
-    let lookat = Point::new(0.0, 0.0, -1.0);
+    let lookfrom = Point::new(13.0, 2.0, 3.0);
+    let lookat = Point::new(0.0, 0.0, 0.0);
     let vup = Point::new(0.0, 1.0, 0.0);
-    let dist_to_focus = (lookfrom - lookat).length();
-    let aperture = 2.0;
+    let dist_to_focus = 10.0;
+    let aperture = 0.1;
 
     let camera = Camera::new(
         lookfrom,
