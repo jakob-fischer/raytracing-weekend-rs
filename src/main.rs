@@ -26,19 +26,6 @@ fn sample(rng: &mut ThreadRng) -> f64 {
     rng.sample(dist)
 }
 
-fn test(rng: &mut ThreadRng) -> f64 {
-    let mut sample = || -> f64 {
-        let dist = Uniform::new(0.0, 1.0);
-        rng.sample(dist)
-    };
-
-    let mut sample3 = || -> f64 {
-        sample() + sample()
-    };
-
-    sample3()+sample()
-}
-
 fn random_vec(min: f64, max: f64, rng: &mut ThreadRng) -> Vec3<f64> {
     let dist = Uniform::new(min, max);
     Vec3::<f64>::new(rng.sample(dist), rng.sample(dist), rng.sample(dist))
@@ -121,7 +108,7 @@ fn main() {
     let aspect_ratio = 3.0 / 2.0;
     let image_width = 1200;
     let image_height = (image_width as f64 / aspect_ratio) as usize;
-    let sample_number = 500;
+    let sample_number = 1;
     let max_depth = 50;
 
     // world
@@ -149,7 +136,7 @@ fn main() {
     for x in 0..image_width {
         println!("{} lines remaining", image_width - x);
         for y in 0..image_height {
-            let colour: Colour = (0..100)
+            let colour: Colour = (0..sample_number)
                 .map(|_| {
                     let u = (x as f64 + rng.sample(dist)) / (image_width - 1) as f64;
                     let v = (y as f64 + rng.sample(dist)) / (image_height - 1) as f64;
