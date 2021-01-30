@@ -1,5 +1,5 @@
 [package]
-name = "minitrace"
+name = "raytracing_weekend_rs"
 version = "0.1.0"
 authors = ["Jakob Fischer <jakob@automorph.info>"]
 edition = "2018"
@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 rand = "0.6.0"
+rayon = "1.5.0"

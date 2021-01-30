@@ -2,7 +2,8 @@ extern crate rand;
 use rand::distributions::Uniform;
 use rand::prelude::ThreadRng;
 use rand::{thread_rng, Rng};
-use std::rc::Rc;
+use rayon::prelude::*;
+use std::sync::Arc;
 
 mod math;
 mod ppm_writer;
@@ -31,16 +32,18 @@ fn random_vec(min: f64, max: f64, rng: &mut ThreadRng) -> Vec3<f64> {
     Vec3::<f64>::new(rng.sample(dist), rng.sample(dist), rng.sample(dist))
 }
 
-fn random_scene(rng: &mut ThreadRng) -> impl Hittable {
-    let material1 = Rc::<Box<dyn Material>>::new(Box::new(Dielectric::new(1.5)));
-    let material2 =
-        Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.4, 0.2, 0.1))));
-    let material3 =
-        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&Colour::new(0.7, 0.6, 0.5), 0.0)));
+fn random_scene(rng: &mut ThreadRng) -> Arc<Box<dyn Hittable + Send + Sync>> {
+    type MaterialBox = Box<dyn Material + Send + Sync>;
+    type HittableBox = Box<dyn Hittable + Send + Sync>;
+
+    let material1 = Arc::new(Box::new(Dielectric::new(1.5)) as MaterialBox);
+    let material2 = Arc::new(Box::new(Lambertian::new(&Colour::new(0.4, 0.2, 0.1))) as MaterialBox);
+    let material3 = Arc::new(Box::new(Metal::new(&Colour::new(0.7, 0.6, 0.5), 0.0)) as MaterialBox);
     let ground_material =
-        Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&Colour::new(0.5, 0.5, 0.5))));
+        Arc::new(Box::new(Lambertian::new(&Colour::new(0.5, 0.5, 0.5))) as MaterialBox);
 
     let mut world = HittableList::new();
+
     world.add(Box::new(Sphere::new(
         Point::new(0.0, -1000.0, 0.0),
         1000.0,
@@ -57,46 +60,39 @@ fn random_scene(rng: &mut ThreadRng) -> impl Hittable {
             );
 
             if (center - Point::new(4.0, 0.2, 0.0)).length() > 0.9 {
-                if choose_mat < 0.8 {
+                let material = if choose_mat < 0.8 {
                     // diffuse
                     let albedo = random_vec(0.0, 1.0, rng) * random_vec(0.0, 1.0, rng);
-                    let material = Rc::<Box<dyn Material>>::new(Box::new(Lambertian::new(&albedo)));
-
-                    world.add(Box::new(Sphere::new(center, 0.2, material)));
+                    Arc::new(Box::new(Lambertian::new(&albedo)) as MaterialBox)
                 } else if choose_mat < 0.95 {
                     // metal
                     let albedo = random_vec(0.5, 1.0, rng);
                     let fuzz = random_double(0.0, 0.5, rng);
-                    let material =
-                        Rc::<Box<dyn Material>>::new(Box::new(Metal::new(&albedo, fuzz)));
-
-                    world.add(Box::new(Sphere::new(center, 0.2, material)));
+                    Arc::new(Box::new(Metal::new(&albedo, fuzz)) as MaterialBox)
                 } else {
                     // glass
-                    let material = Rc::<Box<dyn Material>>::new(Box::new(Dielectric::new(1.5)));
-                    world.add(Box::new(Sphere::new(center, 0.2, material)));
-                }
+                    Arc::new(Box::new(Dielectric::new(1.5)) as MaterialBox)
+                };
+
+                world.add(Box::new(Sphere::new(center, 0.2, material)));
             }
         }
     }
 
-    world.add(Box::new(Sphere::new(
-        Point::new(0.0, 1.0, 0.0),
-        1.0,
-        material1,
-    )));
+    world.add(Box::new(Sphere::new(Point::new(0.0, 1.0, 0.0), 1.0, material1)) as HittableBox);
+
     world.add(Box::new(Sphere::new(
         Point::new(-4.0, 1.0, 0.0),
         1.0,
         material2,
     )));
+
     world.add(Box::new(Sphere::new(
         Point::new(4.0, 1.0, 0.0),
         1.0,
         material3,
     )));
-
-    world
+    Arc::new(Box::new(world) as HittableBox)
 }
 
 fn main() {
@@ -133,23 +129,32 @@ fn main() {
 
     let mut array: Array2d<Colour> =
         Array2d::new(image_width, image_height, &Colour::new(0.0, 0.0, 0.0));
-    for x in 0..image_width {
-        println!("{} lines remaining", image_width - x);
-        for y in 0..image_height {
-            let colour: Colour = (0..sample_number)
-                .map(|_| {
-                    let u = (x as f64 + rng.sample(dist)) / (image_width - 1) as f64;
-                    let v = (y as f64 + rng.sample(dist)) / (image_height - 1) as f64;
-                    camera
-                        .get_ray(u, v, &mut rng)
-                        .ray_color(&world, &mut rng, max_depth)
-                })
-                .fold(Colour::new(0.0, 0.0, 0.0), |old, n| old + n);
 
-            *array.get_mut(x, y) = colour * (1.0 / sample_number as f64);
-        }
+    let pixel_indexes: Vec<_> = (0..image_width)
+        .rev()
+        .map(|x| -> Vec<_> { (0..image_height).map(|y| (x, y)).collect() })
+        .flatten()
+        .collect();
+
+    let result : Vec<_> = pixel_indexes.par_iter().map(|(x, y)| {
+        let mut rng = thread_rng();
+
+        let colour: Colour = (0..sample_number)
+            .map(|_| {
+                let u = (*x as f64 + rng.sample(dist)) / (image_width - 1) as f64;
+                let v = (*y as f64 + rng.sample(dist)) / (image_height - 1) as f64;
+                camera
+                    .get_ray(u, v, &mut rng)
+                    .ray_color(world.clone(), &mut rng, max_depth)
+            })
+            .fold(Colour::new(0.0, 0.0, 0.0), |old, n| old + n);
+
+        (*x, *y, colour * (1.0 / sample_number as f64))
+    }).collect();
+
+    for (x, y, colour) in result {
+        *array.get_mut(x, y) = colour;
     }
-    println!("");
 
     ppm_writer::write(&array, "test.ppm");
 }

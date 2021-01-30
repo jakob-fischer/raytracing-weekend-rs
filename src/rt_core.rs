@@ -2,7 +2,7 @@ use crate::math::*;
 use rand::distributions::Uniform;
 use rand::prelude::ThreadRng;
 use rand::Rng;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub type Colour = Vec3<f64>;
 pub type Point = Vec3<f64>;
@@ -80,7 +80,7 @@ pub struct HitRecord {
     pub normal: Direction,
     pub t: f64,
     pub front_face: bool,
-    pub material: Rc<Box<dyn Material>>,
+    pub material: Arc<Box<dyn Material + Send+ Sync>>,
 }
 
 pub trait Hittable {
@@ -88,7 +88,7 @@ pub trait Hittable {
 }
 
 pub struct HittableList {
-    hittable: Vec<Box<dyn Hittable>>,
+    hittable: Vec<Box<dyn Hittable + Send+ Sync>>,
 }
 
 impl HittableList {
@@ -98,7 +98,7 @@ impl HittableList {
         }
     }
 
-    pub fn add(&mut self, hittable: Box<dyn Hittable>) {
+    pub fn add(&mut self, hittable: Box<dyn Hittable + Send+ Sync>) {
         self.hittable.push(hittable);
     }
 }
@@ -127,7 +127,7 @@ impl Ray {
         &(&self.direction * t) + &self.origin
     }
 
-    pub fn ray_color(&self, world: &dyn Hittable, rng: &mut ThreadRng, depth: i32) -> Colour {
+    pub fn ray_color(&self, world: Arc<Box<dyn Hittable + Send+ Sync>>, rng: &mut ThreadRng, depth: i32) -> Colour {
         // If we've exceeded the ray bounce limit, no more light is gathered.
         if depth <= 0 {
             Colour::new(0.0, 0.0, 0.0)

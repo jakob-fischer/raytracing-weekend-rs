@@ -1,10 +1,10 @@
 use crate::rt_core::*;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct Sphere {
     center: Point,
     radius: f64,
-    material: Rc<Box<dyn Material>>,
+    material: Arc<Box<dyn Material + Send + Sync>>,
 }
 
 impl Hittable for Sphere {
@@ -48,7 +48,7 @@ impl Hittable for Sphere {
 }
 
 impl Sphere {
-    pub fn new(center: Point, radius: f64, material: Rc<Box<dyn Material>>) -> Self {
+    pub fn new(center: Point, radius: f64, material: Arc<Box<dyn Material + Send + Sync>>) -> Self {
         Sphere {
             center,
             radius,
