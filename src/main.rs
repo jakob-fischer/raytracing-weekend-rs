@@ -32,10 +32,7 @@ fn random_vec(min: f64, max: f64, rng: &mut ThreadRng) -> Vec3<f64> {
     Vec3::<f64>::new(rng.sample(dist), rng.sample(dist), rng.sample(dist))
 }
 
-fn random_scene(rng: &mut ThreadRng) -> Arc<Box<dyn Hittable + Send + Sync>> {
-    type MaterialBox = Box<dyn Material + Send + Sync>;
-    type HittableBox = Box<dyn Hittable + Send + Sync>;
-
+fn random_scene(rng: &mut ThreadRng) -> Arc<HittableBox> {
     let material1 = Arc::new(Box::new(Dielectric::new(1.5)) as MaterialBox);
     let material2 = Arc::new(Box::new(Lambertian::new(&Colour::new(0.4, 0.2, 0.1))) as MaterialBox);
     let material3 = Arc::new(Box::new(Metal::new(&Colour::new(0.7, 0.6, 0.5), 0.0)) as MaterialBox);

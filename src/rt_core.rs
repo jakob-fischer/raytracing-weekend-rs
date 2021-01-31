@@ -80,15 +80,17 @@ pub struct HitRecord {
     pub normal: Direction,
     pub t: f64,
     pub front_face: bool,
-    pub material: Arc<Box<dyn Material + Send+ Sync>>,
+    pub material: Arc<MaterialBox>,
 }
 
 pub trait Hittable {
     fn hit(&self, ray: &Ray, r: (f64, f64)) -> Option<HitRecord>;
 }
 
+pub type HittableBox = Box<dyn Hittable + Send + Sync>;
+
 pub struct HittableList {
-    hittable: Vec<Box<dyn Hittable + Send+ Sync>>,
+    hittable: Vec<HittableBox>,
 }
 
 impl HittableList {
@@ -98,7 +100,7 @@ impl HittableList {
         }
     }
 
-    pub fn add(&mut self, hittable: Box<dyn Hittable + Send+ Sync>) {
+    pub fn add(&mut self, hittable: HittableBox) {
         self.hittable.push(hittable);
     }
 }
@@ -118,6 +120,8 @@ pub trait Material {
     fn scatter(&self, r_in: &Ray, hit: &HitRecord, rng: &mut ThreadRng) -> Option<ScatterRecord>;
 }
 
+pub type MaterialBox = Box<dyn Material + Send + Sync>;
+
 impl Ray {
     pub fn new(origin: Point, direction: Direction) -> Self {
         Self { origin, direction }
@@ -127,7 +131,12 @@ impl Ray {
         &(&self.direction * t) + &self.origin
     }
 
-    pub fn ray_color(&self, world: Arc<Box<dyn Hittable + Send+ Sync>>, rng: &mut ThreadRng, depth: i32) -> Colour {
+    pub fn ray_color(
+        &self,
+        world: Arc<HittableBox>,
+        rng: &mut ThreadRng,
+        depth: i32,
+    ) -> Colour {
         // If we've exceeded the ray bounce limit, no more light is gathered.
         if depth <= 0 {
             Colour::new(0.0, 0.0, 0.0)
@@ -153,9 +162,9 @@ pub struct Camera {
     horizontal: Direction,
     vertical: Direction,
     lower_left_corner: Vec3<f64>,
-    lens_radius : f64,
-    u : Vec3<f64>,
-    v : Vec3<f64>,
+    lens_radius: f64,
+    u: Vec3<f64>,
+    v: Vec3<f64>,
 }
 
 impl Camera {
@@ -165,8 +174,8 @@ impl Camera {
         vup: Direction,
         vfov: f64,
         aspect_ratio: f64,
-        aperture : f64,
-        focus_dist : f64
+        aperture: f64,
+        focus_dist: f64,
     ) -> Self {
         let theta = degrees_to_radians(vfov);
         let h = (theta / 2.0).tan();
@@ -178,9 +187,9 @@ impl Camera {
         let v = w.cross(&u);
 
         let origin = lookfrom;
-        let horizontal =  u * (focus_dist * viewport_width);
+        let horizontal = u * (focus_dist * viewport_width);
         let vertical = v * (focus_dist * viewport_height);
-        let lower_left_corner = origin - horizontal*0.5 - vertical*0.5 - w*focus_dist;
+        let lower_left_corner = origin - horizontal * 0.5 - vertical * 0.5 - w * focus_dist;
 
         let lens_radius = aperture / 2.0;
 
@@ -201,7 +210,7 @@ impl Camera {
 
         Ray::new(
             self.origin + offset,
-            self.lower_left_corner + self.horizontal*s + self.vertical*t - self.origin - offset
+            self.lower_left_corner + self.horizontal * s + self.vertical * t - self.origin - offset,
         )
     }
 }
