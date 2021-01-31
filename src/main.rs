@@ -133,21 +133,24 @@ fn main() {
         .flatten()
         .collect();
 
-    let result : Vec<_> = pixel_indexes.par_iter().map(|(x, y)| {
-        let mut rng = thread_rng();
+    let result: Vec<_> = pixel_indexes
+        .par_iter()
+        .map(|(x, y)| {
+            let mut rng = thread_rng();
 
-        let colour: Colour = (0..sample_number)
-            .map(|_| {
-                let u = (*x as f64 + rng.sample(dist)) / (image_width - 1) as f64;
-                let v = (*y as f64 + rng.sample(dist)) / (image_height - 1) as f64;
-                camera
-                    .get_ray(u, v, &mut rng)
-                    .ray_color(world.clone(), &mut rng, max_depth)
-            })
-            .fold(Colour::new(0.0, 0.0, 0.0), |old, n| old + n);
+            let colour: Colour = (0..sample_number)
+                .map(|_| {
+                    let u = (*x as f64 + rng.sample(dist)) / (image_width - 1) as f64;
+                    let v = (*y as f64 + rng.sample(dist)) / (image_height - 1) as f64;
+                    camera
+                        .get_ray(u, v, &mut rng)
+                        .ray_color(world.clone(), &mut rng, max_depth)
+                })
+                .fold(Colour::new(0.0, 0.0, 0.0), |old, n| old + n);
 
-        (*x, *y, colour * (1.0 / sample_number as f64))
-    }).collect();
+            (*x, *y, colour * (1.0 / sample_number as f64))
+        })
+        .collect();
 
     for (x, y, colour) in result {
         *array.get_mut(x, y) = colour;

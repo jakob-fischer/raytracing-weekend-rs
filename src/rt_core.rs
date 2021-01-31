@@ -131,12 +131,7 @@ impl Ray {
         &(&self.direction * t) + &self.origin
     }
 
-    pub fn ray_color(
-        &self,
-        world: Arc<HittableBox>,
-        rng: &mut ThreadRng,
-        depth: i32,
-    ) -> Colour {
+    pub fn ray_color(&self, world: Arc<HittableBox>, rng: &mut ThreadRng, depth: i32) -> Colour {
         // If we've exceeded the ray bounce limit, no more light is gathered.
         if depth <= 0 {
             Colour::new(0.0, 0.0, 0.0)
