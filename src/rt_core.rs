@@ -1,27 +1,26 @@
+use crate::kd_tree::*;
 use crate::math::*;
 use rand::distributions::Uniform;
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::sync::Arc;
 
-pub type Colour = Vec3<f64>;
-pub type Point = Vec3<f64>;
-pub type Direction = Vec3<f64>;
+pub use crate::rt_base::*;
 
 fn degrees_to_radians(degrees: f64) -> f64 {
     return degrees * std::f64::consts::PI / 180.0;
 }
 
-impl Vec3<f64> {
+impl Vec3d {
     pub fn is_almost_zero(&self) -> bool {
         self.squared_length() < 0e-14
     }
 
-    pub fn reflect(&self, n: &Vec3<f64>) -> Vec3<f64> {
+    pub fn reflect(&self, n: &Vec3d) -> Vec3d {
         self - *n * self.dot(n) * 2.0
     }
 
-    pub fn refract(&self, n: &Vec3<f64>, etai_over_etat: f64) -> Vec3<f64> {
+    pub fn refract(&self, n: &Vec3d, etai_over_etat: f64) -> Vec3d {
         let cos_theta = -n.dot(self).min(1.0);
         let r_out_perp = (self + n * cos_theta) * etai_over_etat;
         let r_out_parallel = n * (-(1.0 - r_out_perp.squared_length()).abs().sqrt());
@@ -65,11 +64,6 @@ pub fn random_in_hemisphere(normal: &Direction, rng: &mut ThreadRng) -> Directio
     }
 }
 
-pub struct Ray {
-    pub origin: Point,
-    pub direction: Direction,
-}
-
 pub struct ScatterRecord {
     pub attenuation: Colour,
     pub scattered_ray: Ray,
@@ -84,19 +78,30 @@ pub struct HitRecord {
 }
 
 pub trait Hittable {
-    fn hit(&self, ray: &Ray, r: (f64, f64)) -> Option<HitRecord>;
+    fn hit(&self, ray: &ConstrainedRay) -> Option<HitRecord>;
 }
 
 pub type HittableBox = Box<dyn Hittable + Send + Sync>;
 
+struct HittableBoxInTree(HittableBox);
+type RtKdTree = KdTree<BoundingBox3d, HittableBoxInTree>;
+
+impl KdTreeContent<BoundingBox3d> for HittableBoxInTree {
+    fn get_bounding_box(&self) -> BoundingBox3d {
+        BoundingBox3d::default()
+    }
+}
+
 pub struct HittableList {
     hittable: Vec<HittableBox>,
+    hittable2: RtKdTree,
 }
 
 impl HittableList {
     pub fn new() -> HittableList {
         HittableList {
             hittable: Vec::new(),
+            hittable2: RtKdTree::new(),
         }
     }
 
@@ -106,10 +111,10 @@ impl HittableList {
 }
 
 impl Hittable for HittableList {
-    fn hit(&self, ray: &Ray, r: (f64, f64)) -> Option<HitRecord> {
+    fn hit(&self, cray: &ConstrainedRay) -> Option<HitRecord> {
         self.hittable
             .iter()
-            .map(|x| x.hit(ray, r))
+            .map(|x| x.hit(cray))
             .filter(|x| x.is_some())
             .map(|x| x.unwrap())
             .min_by(|x, y| x.t.partial_cmp(&y.t).unwrap())
@@ -135,7 +140,10 @@ impl Ray {
         // If we've exceeded the ray bounce limit, no more light is gathered.
         if depth <= 0 {
             Colour::new(0.0, 0.0, 0.0)
-        } else if let Some(record) = world.hit(self, (0.001, f64::INFINITY)) {
+        } else if let Some(record) = world.hit(&ConstrainedRay {
+            ray: self.clone(),
+            range: (0.001, f64::INFINITY),
+        }) {
             if let Some(scatter_record) = record.material.scatter(self, &record, rng) {
                 scatter_record.attenuation
                     * scatter_record
@@ -156,10 +164,10 @@ pub struct Camera {
     origin: Point,
     horizontal: Direction,
     vertical: Direction,
-    lower_left_corner: Vec3<f64>,
+    lower_left_corner: Vec3d,
     lens_radius: f64,
-    u: Vec3<f64>,
-    v: Vec3<f64>,
+    u: Vec3d,
+    v: Vec3d,
 }
 
 impl Camera {

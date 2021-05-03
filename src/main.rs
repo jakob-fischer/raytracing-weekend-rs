@@ -10,6 +10,8 @@ mod ppm_writer;
 mod rt_core;
 mod rt_hittables;
 mod rt_materials;
+mod kd_tree;
+mod rt_base;
 
 use math::*;
 use ppm_writer::Array2d;
@@ -27,9 +29,9 @@ fn sample(rng: &mut ThreadRng) -> f64 {
     rng.sample(dist)
 }
 
-fn random_vec(min: f64, max: f64, rng: &mut ThreadRng) -> Vec3<f64> {
+fn random_vec(min: f64, max: f64, rng: &mut ThreadRng) -> Vec3d {
     let dist = Uniform::new(min, max);
-    Vec3::<f64>::new(rng.sample(dist), rng.sample(dist), rng.sample(dist))
+    Vec3d::new(rng.sample(dist), rng.sample(dist), rng.sample(dist))
 }
 
 fn random_scene(rng: &mut ThreadRng) -> Arc<HittableBox> {

@@ -1,4 +1,5 @@
 use crate::rt_core::*;
+use crate::rt_base::*;
 use std::sync::Arc;
 
 pub struct Sphere {
@@ -8,10 +9,10 @@ pub struct Sphere {
 }
 
 impl Hittable for Sphere {
-    fn hit(&self, ray: &Ray, (t_min, t_max): (f64, f64)) -> Option<HitRecord> {
-        let oc = ray.origin - self.center;
-        let a = ray.direction.squared_length();
-        let half_b = oc.dot(&ray.direction);
+    fn hit(&self, cray: &ConstrainedRay) -> Option<HitRecord> {
+        let oc = cray.ray.origin - self.center;
+        let a = cray.ray.direction.squared_length();
+        let half_b = oc.dot(&cray.ray.direction);
         let c = oc.squared_length() - self.radius * self.radius;
         let discriminant = half_b * half_b - a * c;
 
@@ -21,16 +22,16 @@ impl Hittable for Sphere {
             let sqrtd = discriminant.sqrt();
             // Find the nearest root that lies in the acceptable range.
             let mut root = (-half_b - sqrtd) / a;
-            if root < t_min || t_max < root {
+            if root < cray.range.0 || cray.range.1 < root {
                 root = (-half_b + sqrtd) / a;
-                if root < t_min || t_max < root {
+                if root < cray.range.0 || cray.range.1 < root {
                     return None;
                 }
             }
 
-            let point = ray.at(root);
+            let point = cray.ray.at(root);
             let outward_normal = (point - self.center) * (1.0 / self.radius);
-            let front_face = ray.direction.dot(&outward_normal) < 0.0;
+            let front_face = cray.ray.direction.dot(&outward_normal) < 0.0;
 
             Some(HitRecord {
                 point,

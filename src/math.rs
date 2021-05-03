@@ -329,3 +329,5 @@ where
         self.div_assign(len);
     }
 }
+
+pub type Vec3d = Vec3<f64>;
