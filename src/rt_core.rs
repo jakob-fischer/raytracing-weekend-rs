@@ -79,6 +79,7 @@ pub struct HitRecord {
 
 pub trait Hittable {
     fn hit(&self, ray: &ConstrainedRay) -> Option<HitRecord>;
+    fn get_bounding_box(&self) -> Option<BoundingBox3d>;
 }
 
 pub type HittableBox = Box<dyn Hittable + Send + Sync>;
@@ -118,6 +119,10 @@ impl Hittable for HittableList {
             .filter(|x| x.is_some())
             .map(|x| x.unwrap())
             .min_by(|x, y| x.t.partial_cmp(&y.t).unwrap())
+    }
+
+    fn get_bounding_box(&self) -> Option<BoundingBox3d> {
+        None
     }
 }
 

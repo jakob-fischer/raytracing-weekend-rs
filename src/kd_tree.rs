@@ -90,8 +90,24 @@ impl BoundingBoxTrait for BoundingBox3d {
 
         let dim = self.get_most_narrow_dimension();
 
-        // TODO
-        None
+        let right = self.v.t[dim];
+        let left = self.u.t[dim];
+        let dif = right - left;
+        let left_clamped = if left < 0.0 { left } else { 0.0 };
+        let right_clamped = if right > 0.0 { right } else { 0.0 };
+        let mut template = self.clone();
+
+        if -left_clamped > right_clamped {
+            template.u.t[dim] -= dif;
+            template.v.t[dim] -= dif;
+            let parent = Self{u : template.u.clone(), v: self.v.clone()};
+            Some((template, parent))
+        } else {
+            template.u.t[dim] += dif;
+            template.v.t[dim] += dif;
+            let parent = Self{u : self.u.clone(), v: template.v.clone()};
+            Some((template, parent))
+        }
     }
 
     fn is_contained(&self, other: &Self) -> bool {
@@ -116,8 +132,8 @@ impl BoundingBoxTrait for BoundingBox3d {
 
 impl HittableBoundingBoxTrait for BoundingBox3d {
     fn hit(&self, ray: &Ray, r: (f64, f64)) -> bool {
-        // FIXME implemnet
-        true
+        let ray = ConstrainedRay{ray: ray.clone(), range : r};
+        self.intersects(&ray).is_some()
     }
 }
 

@@ -1,5 +1,5 @@
-use crate::rt_core::*;
 use crate::rt_base::*;
+use crate::rt_core::*;
 use std::sync::Arc;
 
 pub struct Sphere {
@@ -45,6 +45,14 @@ impl Hittable for Sphere {
                 material: self.material.clone(),
             })
         }
+    }
+
+    fn get_bounding_box(&self) -> Option<BoundingBox3d> {
+        let point = Point::new(self.radius, self.radius, self.radius);
+        Some(BoundingBox3d {
+            u: self.center - point,
+            v: self.center + point,
+        })
     }
 }
 
