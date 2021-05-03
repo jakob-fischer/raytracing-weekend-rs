@@ -139,7 +139,6 @@ fn main() {
         .par_iter()
         .map(|(x, y)| {
             let mut rng = thread_rng();
-
             let colour: Colour = (0..sample_number)
                 .map(|_| {
                     let u = (*x as f64 + rng.sample(dist)) / (image_width - 1) as f64;

@@ -89,36 +89,35 @@ type RtKdTree = KdTree<BoundingBox3d, HittableBoxInTree>;
 
 impl KdTreeContent<BoundingBox3d> for HittableBoxInTree {
     fn get_bounding_box(&self) -> BoundingBox3d {
-        BoundingBox3d::default()
+        self.0.get_bounding_box().unwrap()
     }
 }
 
 pub struct HittableList {
-    hittable: Vec<HittableBox>,
-    hittable2: RtKdTree,
+    hittable: RtKdTree,
 }
 
 impl HittableList {
     pub fn new() -> HittableList {
         HittableList {
-            hittable: Vec::new(),
-            hittable2: RtKdTree::new(),
+            hittable: RtKdTree::new(),
         }
     }
 
     pub fn add(&mut self, hittable: HittableBox) {
-        self.hittable.push(hittable);
+        self.hittable.add(&Arc::new(HittableBoxInTree(hittable)))
     }
 }
 
 impl Hittable for HittableList {
     fn hit(&self, cray: &ConstrainedRay) -> Option<HitRecord> {
+        let hit_fun = |hittable: &HittableBoxInTree, ray: &ConstrainedRay| -> Option<f64> {
+            hittable.0.hit(ray).map(|record| record.t)
+        };
+
         self.hittable
-            .iter()
-            .map(|x| x.hit(cray))
-            .filter(|x| x.is_some())
-            .map(|x| x.unwrap())
-            .min_by(|x, y| x.t.partial_cmp(&y.t).unwrap())
+            .get_closest_hit(&hit_fun, cray)
+            .map(|box_in_tree| box_in_tree.0.hit(cray).unwrap())
     }
 
     fn get_bounding_box(&self) -> Option<BoundingBox3d> {

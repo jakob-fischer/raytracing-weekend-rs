@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
-pub trait BoundingBoxTrait: Sized + Clone + Default {
+pub trait BoundingBoxTrait: Sized + Clone + Default + std::fmt::Debug {
     fn partition(&self) -> Option<(Self, Self)>;
     fn extend(&self) -> Option<(Self, Self)>; // First is other, Second new parent
 
@@ -15,7 +15,7 @@ pub trait BoundingBoxTrait: Sized + Clone + Default {
 }
 
 pub trait HittableBoundingBoxTrait: BoundingBoxTrait {
-    fn hit(&self, ray: &Ray, r: (f64, f64)) -> bool;
+    fn hit(&self, ray: &ConstrainedRay) -> Option<(f64, f64)>;
 }
 
 impl Default for BoundingBox3d {
@@ -29,9 +29,9 @@ impl Default for BoundingBox3d {
 
 impl BoundingBox3d {
     fn get_most_narrow_dimension(&self) -> usize {
-        let dx = self.u.t[0] - self.v.t[0];
-        let dy = self.u.t[1] - self.v.t[1];
-        let dz = self.u.t[2] - self.v.t[2];
+        let dx = self.v.t[0] - self.u.t[0];
+        let dy = self.v.t[1] - self.u.t[1];
+        let dz = self.v.t[2] - self.u.t[2];
 
         if dx < dy && dx < dz {
             0
@@ -43,9 +43,9 @@ impl BoundingBox3d {
     }
 
     fn get_widest_dimension(&self) -> usize {
-        let dx = self.u.t[0] - self.v.t[0];
-        let dy = self.u.t[1] - self.v.t[1];
-        let dz = self.u.t[2] - self.v.t[2];
+        let dx = self.v.t[0] - self.u.t[0];
+        let dy = self.v.t[1] - self.u.t[1];
+        let dz = self.v.t[2] - self.u.t[2];
 
         if dx > dy && dx > dz {
             0
@@ -64,7 +64,7 @@ impl BoundingBoxTrait for BoundingBox3d {
         }
 
         let dim = self.get_widest_dimension();
-        let midpoint = 0.5 * (self.v.t[dim] - self.u.t[dim]);
+        let midpoint = 0.5 * (self.v.t[dim] + self.u.t[dim]);
 
         let mut u_new = self.u;
         let mut v_new = self.v;
@@ -97,15 +97,21 @@ impl BoundingBoxTrait for BoundingBox3d {
         let right_clamped = if right > 0.0 { right } else { 0.0 };
         let mut template = self.clone();
 
-        if -left_clamped > right_clamped {
+        if -left_clamped < right_clamped {
             template.u.t[dim] -= dif;
             template.v.t[dim] -= dif;
-            let parent = Self{u : template.u.clone(), v: self.v.clone()};
+            let parent = Self {
+                u: template.u.clone(),
+                v: self.v.clone(),
+            };
             Some((template, parent))
         } else {
             template.u.t[dim] += dif;
             template.v.t[dim] += dif;
-            let parent = Self{u : self.u.clone(), v: template.v.clone()};
+            let parent = Self {
+                u: self.u.clone(),
+                v: template.v.clone(),
+            };
             Some((template, parent))
         }
     }
@@ -126,14 +132,13 @@ impl BoundingBoxTrait for BoundingBox3d {
     }
 
     fn is_sub_scale(&self, other: &Self) -> bool {
-        (self.u - self.v).length() <= (other.u - other.v).length()
+        (self.v - self.u).length() <= (other.v - other.u).length()
     }
 }
 
 impl HittableBoundingBoxTrait for BoundingBox3d {
-    fn hit(&self, ray: &Ray, r: (f64, f64)) -> bool {
-        let ray = ConstrainedRay{ray: ray.clone(), range : r};
-        self.intersects(&ray).is_some()
+    fn hit(&self, ray: &ConstrainedRay) -> Option<(f64, f64)> {
+        self.intersects(&ray)
     }
 }
 
@@ -149,22 +154,7 @@ struct KdNode<BoundingBox: HittableBoundingBoxTrait, Content: KdTreeContent<Boun
 
 pub struct KdTree<BoundingBox: HittableBoundingBoxTrait, Content: KdTreeContent<BoundingBox>> {
     root: Option<KdNode<BoundingBox, Content>>,
-}
-
-struct ArcWrapper<T: ?Sized>(Arc<T>);
-
-impl<T: ?Sized> std::cmp::PartialEq<ArcWrapper<T>> for ArcWrapper<T> {
-    fn eq(&self, other: &Self) -> bool {
-        Arc::as_ptr(&self.0) == Arc::as_ptr(&other.0)
-    }
-}
-
-impl<T: ?Sized> std::cmp::Eq for ArcWrapper<T> {}
-
-impl<T: ?Sized> Hash for ArcWrapper<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        Arc::as_ptr(&self.0).hash(state);
-    }
+    size: usize,
 }
 
 impl<BoundingBox: HittableBoundingBoxTrait, Content: KdTreeContent<BoundingBox>>
@@ -183,7 +173,10 @@ impl<BoundingBox: HittableBoundingBoxTrait, Content: KdTreeContent<BoundingBox>>
         content: &Arc<Content>,
         content_enclosure: &BoundingBox,
     ) {
-        if content_enclosure.is_sub_scale(&node.enclosure) && node.children.is_empty() {
+        if content_enclosure.is_sub_scale(&node.enclosure)
+            && node.children.is_empty()
+            && node.content.len() > 3
+        {
             if let Some((left, right)) = node.enclosure.partition() {
                 let mut left = Self::new_node(left);
                 let mut right = Self::new_node(right);
@@ -207,7 +200,9 @@ impl<BoundingBox: HittableBoundingBoxTrait, Content: KdTreeContent<BoundingBox>>
             node.content.push(content.clone());
         } else {
             for child in &mut node.children {
-                Self::add_to_node(child, content, content_enclosure);
+                if content_enclosure.intersects(&child.enclosure) {
+                    Self::add_to_node(child, content, content_enclosure);
+                }
             }
         }
     }
@@ -215,6 +210,7 @@ impl<BoundingBox: HittableBoundingBoxTrait, Content: KdTreeContent<BoundingBox>>
     pub fn new() -> Self {
         Self {
             root: Some(Self::new_node(BoundingBox::default())),
+            size: 0,
         }
     }
 
@@ -239,30 +235,50 @@ impl<BoundingBox: HittableBoundingBoxTrait, Content: KdTreeContent<BoundingBox>>
             &content,
             &content_enclosure,
         );
+        self.size += 1;
     }
 
-    fn collect_ray_hit_candidates(
+    fn get_closest_hit_internal<F>(
         node: &KdNode<BoundingBox, Content>,
-        ray: &Ray,
-        limits: (f64, f64),
-        result: &mut HashSet<ArcWrapper<Content>>,
-    ) {
-        if !node.enclosure.hit(ray, limits) {
-            return;
-        }
-
+        fun: &F,
+        cray: &ConstrainedRay,
+        result: &mut Option<Arc<Content>>,
+        current: &mut f64,
+    ) where
+        F: Fn(&Content, &ConstrainedRay) -> Option<f64>,
+    {
         for content in &node.content {
-            result.insert(ArcWrapper(content.clone()));
+            if let Some(candidate) = fun(content, cray) {
+                if candidate < *current {
+                    *current = candidate;
+                    *result = Some(content.clone());
+                }
+            }
         }
 
         for children in &node.children {
-            Self::collect_ray_hit_candidates(children, ray, limits, result);
+            if let Some(hit) = children.enclosure.hit(cray) {
+                //if hit.1 < *current {
+                    Self::get_closest_hit_internal::<F>(children, fun, cray, result, current);
+                //}
+            }
         }
     }
 
-    pub fn get_ray_hit_candidates(&self, ray: &Ray, limits: (f64, f64)) -> Vec<Arc<Content>> {
-        let mut result = HashSet::<ArcWrapper<Content>>::new();
-        Self::collect_ray_hit_candidates(self.root.as_ref().unwrap(), ray, limits, &mut result);
-        result.into_iter().map(|x| x.0).collect::<Vec<_>>()
+    pub fn get_closest_hit<F>(&self, fun: &F, cray: &ConstrainedRay) -> Option<Arc<Content>>
+    where
+        F: Fn(&Content, &ConstrainedRay) -> Option<f64>,
+    {
+        let mut result: Option<Arc<Content>> = None;
+        let mut current = cray.range.1;
+        Self::get_closest_hit_internal::<F>(
+            &self.root.as_ref().unwrap(),
+            fun,
+            cray,
+            &mut result,
+            &mut current,
+        );
+
+        result
     }
 }

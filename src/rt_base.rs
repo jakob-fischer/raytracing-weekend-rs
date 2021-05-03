@@ -15,7 +15,7 @@ pub struct ConstrainedRay {
     pub range: (f64, f64),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BoundingBox3d {
     pub u: Vec3d,
     pub v: Vec3d,
@@ -45,7 +45,7 @@ impl BoundingBox3d {
                     && point.t[2] <= self.v.t[2]
             }
             2 => {
-                self.u.t[1] <= point.t[0]
+                self.u.t[0] <= point.t[0]
                     && point.t[0] <= self.v.t[0]
                     && self.u.t[1] <= point.t[1]
                     && point.t[1] <= self.v.t[1]
@@ -83,7 +83,7 @@ impl BoundingBox3d {
                 }
             }
         }
-
+        
         match result.len() {
             0 => None,
             1 => Some((*result.get(0).unwrap(), *result.get(0).unwrap())),
