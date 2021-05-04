@@ -1,31 +1,11 @@
-use crate::kd_tree::*;
-use crate::math::*;
+use maglio::*;
 use rand::distributions::Uniform;
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::sync::Arc;
 
-pub use crate::rt_base::*;
-
 fn degrees_to_radians(degrees: f64) -> f64 {
     return degrees * std::f64::consts::PI / 180.0;
-}
-
-impl Vec3d {
-    pub fn is_almost_zero(&self) -> bool {
-        self.squared_length() < 0e-14
-    }
-
-    pub fn reflect(&self, n: &Vec3d) -> Vec3d {
-        self - *n * self.dot(n) * 2.0
-    }
-
-    pub fn refract(&self, n: &Vec3d, etai_over_etat: f64) -> Vec3d {
-        let cos_theta = -n.dot(self).min(1.0);
-        let r_out_perp = (self + n * cos_theta) * etai_over_etat;
-        let r_out_parallel = n * (-(1.0 - r_out_perp.squared_length()).abs().sqrt());
-        r_out_perp + r_out_parallel
-    }
 }
 
 pub fn random_unit_sphere(rng: &mut ThreadRng) -> Direction {
@@ -131,36 +111,24 @@ pub trait Material {
 
 pub type MaterialBox = Box<dyn Material + Send + Sync>;
 
-impl Ray {
-    pub fn new(origin: Point, direction: Direction) -> Self {
-        Self { origin, direction }
-    }
-
-    pub fn at(&self, t: f64) -> Point {
-        &(&self.direction * t) + &self.origin
-    }
-
-    pub fn ray_color(&self, world: Arc<HittableBox>, rng: &mut ThreadRng, depth: i32) -> Colour {
-        // If we've exceeded the ray bounce limit, no more light is gathered.
-        if depth <= 0 {
-            Colour::new(0.0, 0.0, 0.0)
-        } else if let Some(record) = world.hit(&ConstrainedRay {
-            ray: self.clone(),
-            range: (0.001, f64::INFINITY),
-        }) {
-            if let Some(scatter_record) = record.material.scatter(self, &record, rng) {
-                scatter_record.attenuation
-                    * scatter_record
-                        .scattered_ray
-                        .ray_color(world, rng, depth - 1)
-            } else {
-                Colour::new(0.0, 0.0, 0.0)
-            }
+pub fn ray_color(ray: &Ray, world: Arc<HittableBox>, rng: &mut ThreadRng, depth: i32) -> Colour {
+    // If we've exceeded the ray bounce limit, no more light is gathered.
+    if depth <= 0 {
+        Colour::new(0.0, 0.0, 0.0)
+    } else if let Some(record) = world.hit(&ConstrainedRay {
+        ray: ray.clone(),
+        range: (0.001, f64::INFINITY),
+    }) {
+        if let Some(scatter_record) = record.material.scatter(ray, &record, rng) {
+            scatter_record.attenuation
+                * ray_color(&scatter_record.scattered_ray, world, rng, depth - 1)
         } else {
-            let unit_direction = self.direction.get_normalized();
-            let t = 0.5 * (unit_direction.dot(&Direction::new(0.0, 1.0, 0.0)) + 1.0);
-            Colour::new(1.0, 1.0, 1.0) * (1.0 - t) + Colour::new(0.5, 0.7, 1.0) * t
+            Colour::new(0.0, 0.0, 0.0)
         }
+    } else {
+        let unit_direction = ray.direction.get_normalized();
+        let t = 0.5 * (unit_direction.dot(&Direction::new(0.0, 1.0, 0.0)) + 1.0);
+        Colour::new(1.0, 1.0, 1.0) * (1.0 - t) + Colour::new(0.5, 0.7, 1.0) * t
     }
 }
 

@@ -2,6 +2,7 @@ use crate::rt_core::*;
 use rand::prelude::ThreadRng;
 use rand::Rng;
 use rand::distributions::Uniform;
+use maglio::*;
 
 pub struct Lambertian {
     albedo: Colour,
@@ -102,7 +103,7 @@ impl Material for Dielectric {
         let cos_theta = (-unit_direction.dot(&hit_record.normal)).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
         let cannot_refract = refraction_ratio * sin_theta > 1.0;
-
+        
         let dist = Uniform::new(0.0, 1.0);
         let direction = if cannot_refract || reflectance(cos_theta, refraction_ratio) > rng.sample(dist) {
             unit_direction.reflect(&hit_record.normal)

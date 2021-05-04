@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::Write;
 
-use super::math::*;
+use super::maglio::*;
 
 pub struct Array2d<T> {
     width: usize,

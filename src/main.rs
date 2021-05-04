@@ -1,19 +1,17 @@
 extern crate rand;
+extern crate maglio;
 use rand::distributions::Uniform;
 use rand::prelude::ThreadRng;
 use rand::{thread_rng, Rng};
 use rayon::prelude::*;
 use std::sync::Arc;
 
-mod math;
 mod ppm_writer;
 mod rt_core;
 mod rt_hittables;
 mod rt_materials;
-mod kd_tree;
-mod rt_base;
 
-use math::*;
+use maglio::*;
 use ppm_writer::Array2d;
 use rt_core::*;
 use rt_hittables::*;
@@ -143,9 +141,8 @@ fn main() {
                 .map(|_| {
                     let u = (*x as f64 + rng.sample(dist)) / (image_width - 1) as f64;
                     let v = (*y as f64 + rng.sample(dist)) / (image_height - 1) as f64;
-                    camera
-                        .get_ray(u, v, &mut rng)
-                        .ray_color(world.clone(), &mut rng, max_depth)
+                    ray_color(&camera
+                        .get_ray(u, v, &mut rng), world.clone(), &mut rng, max_depth)
                 })
                 .fold(Colour::new(0.0, 0.0, 0.0), |old, n| old + n);
 
