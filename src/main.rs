@@ -17,6 +17,8 @@ use rt_core::*;
 use rt_hittables::*;
 use rt_materials::*;
 
+use maglio::Point3d as Point;
+
 fn random_double(min: f64, max: f64, rng: &mut ThreadRng) -> f64 {
     let dist = Uniform::new(min, max);
     rng.sample(dist)

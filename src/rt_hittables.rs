@@ -2,6 +2,9 @@ use maglio::*;
 use crate::rt_core::*;
 use std::sync::Arc;
 
+use maglio::Point3d as Point;
+use maglio::ConstrainedRay3d as ConstrainedRay;
+
 pub struct Sphere {
     center: Point,
     radius: f64,

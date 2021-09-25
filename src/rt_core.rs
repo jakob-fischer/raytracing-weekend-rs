@@ -4,6 +4,11 @@ use rand::prelude::ThreadRng;
 use rand::Rng;
 use std::sync::Arc;
 
+use maglio::Direction3d as Direction;
+use maglio::Point3d as Point;
+use maglio::Ray3d as Ray;
+use maglio::ConstrainedRay3d as ConstrainedRay;
+
 fn degrees_to_radians(degrees: f64) -> f64 {
     return degrees * std::f64::consts::PI / 180.0;
 }

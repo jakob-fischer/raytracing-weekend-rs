@@ -4,6 +4,8 @@ use rand::Rng;
 use rand::distributions::Uniform;
 use maglio::*;
 
+use maglio::Ray3d as Ray;
+
 pub struct Lambertian {
     albedo: Colour,
 }
