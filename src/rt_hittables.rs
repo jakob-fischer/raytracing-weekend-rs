@@ -1,9 +1,9 @@
-use maglio::*;
 use crate::rt_core::*;
+use maglio::*;
 use std::sync::Arc;
 
-use maglio::Point3d as Point;
 use maglio::ConstrainedRay3d as ConstrainedRay;
+use maglio::Point3d as Point;
 
 pub struct Sphere {
     center: Point,

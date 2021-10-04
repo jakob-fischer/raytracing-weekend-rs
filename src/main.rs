@@ -1,5 +1,5 @@
-extern crate rand;
 extern crate maglio;
+extern crate rand;
 use rand::distributions::Uniform;
 use rand::prelude::ThreadRng;
 use rand::{thread_rng, Rng};
@@ -43,7 +43,7 @@ fn random_scene(rng: &mut ThreadRng) -> Arc<HittableBox> {
 
     let mut world = HittableList::new();
 
-    world.add(Box::new(Sphere::new(
+    world.add(Arc::new(Sphere::new(
         Point::new(0.0, -1000.0, 0.0),
         1000.0,
         ground_material,
@@ -73,25 +73,25 @@ fn random_scene(rng: &mut ThreadRng) -> Arc<HittableBox> {
                     Arc::new(Box::new(Dielectric::new(1.5)) as MaterialBox)
                 };
 
-                world.add(Box::new(Sphere::new(center, 0.2, material)));
+                world.add(Arc::new(Sphere::new(center, 0.2, material)));
             }
         }
     }
 
-    world.add(Box::new(Sphere::new(Point::new(0.0, 1.0, 0.0), 1.0, material1)) as HittableBox);
+    world.add(Arc::new(Sphere::new(Point::new(0.0, 1.0, 0.0), 1.0, material1)) as HittableBox);
 
-    world.add(Box::new(Sphere::new(
+    world.add(Arc::new(Sphere::new(
         Point::new(-4.0, 1.0, 0.0),
         1.0,
         material2,
     )));
 
-    world.add(Box::new(Sphere::new(
+    world.add(Arc::new(Sphere::new(
         Point::new(4.0, 1.0, 0.0),
         1.0,
         material3,
     )));
-    Arc::new(Box::new(world) as HittableBox)
+    Arc::new(Arc::new(world) as HittableBox)
 }
 
 fn main() {
@@ -143,8 +143,12 @@ fn main() {
                 .map(|_| {
                     let u = (*x as f64 + rng.sample(dist)) / (image_width - 1) as f64;
                     let v = (*y as f64 + rng.sample(dist)) / (image_height - 1) as f64;
-                    ray_color(&camera
-                        .get_ray(u, v, &mut rng), world.clone(), &mut rng, max_depth)
+                    ray_color(
+                        &camera.get_ray(u, v, &mut rng),
+                        world.clone(),
+                        &mut rng,
+                        max_depth,
+                    )
                 })
                 .fold(Colour::new(0.0, 0.0, 0.0), |old, n| old + n);
 

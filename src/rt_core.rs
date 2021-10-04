@@ -2,12 +2,13 @@ use maglio::*;
 use rand::distributions::Uniform;
 use rand::prelude::ThreadRng;
 use rand::Rng;
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
+use maglio::ConstrainedRay3d as ConstrainedRay;
 use maglio::Direction3d as Direction;
 use maglio::Point3d as Point;
 use maglio::Ray3d as Ray;
-use maglio::ConstrainedRay3d as ConstrainedRay;
 
 fn degrees_to_radians(degrees: f64) -> f64 {
     return degrees * std::f64::consts::PI / 180.0;
@@ -67,7 +68,7 @@ pub trait Hittable {
     fn get_bounding_box(&self) -> Option<BoundingBox3d>;
 }
 
-pub type HittableBox = Box<dyn Hittable + Send + Sync>;
+pub type HittableBox = Arc<dyn Hittable + Send + Sync>;
 
 struct HittableBoxInTree(HittableBox);
 type RtKdTree = KdTree<BoundingBox3d, HittableBoxInTree>;
@@ -75,6 +76,26 @@ type RtKdTree = KdTree<BoundingBox3d, HittableBoxInTree>;
 impl KdTreeContent<BoundingBox3d> for HittableBoxInTree {
     fn get_bounding_box(&self) -> BoundingBox3d {
         self.0.get_bounding_box().unwrap()
+    }
+}
+
+impl Clone for HittableBoxInTree {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl PartialEq for HittableBoxInTree {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::as_ptr(&self.0) == Arc::as_ptr(&other.0)
+    }
+}
+
+impl Eq for HittableBoxInTree {}
+
+impl Hash for HittableBoxInTree {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Arc::as_ptr(&self.0).hash(state);
     }
 }
 
@@ -90,7 +111,7 @@ impl HittableList {
     }
 
     pub fn add(&mut self, hittable: HittableBox) {
-        self.hittable.add(&Arc::new(HittableBoxInTree(hittable)))
+        self.hittable.add(HittableBoxInTree(hittable))
     }
 }
 

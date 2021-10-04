@@ -1,8 +1,8 @@
 use crate::rt_core::*;
+use maglio::*;
+use rand::distributions::Uniform;
 use rand::prelude::ThreadRng;
 use rand::Rng;
-use rand::distributions::Uniform;
-use maglio::*;
 
 use maglio::Ray3d as Ray;
 
@@ -71,13 +71,12 @@ impl Material for Metal {
     }
 }
 
-fn reflectance( cosine : f64, ref_idx : f64) -> f64 {
+fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
     // Use Schlick's approximation for reflectance.
-    let r0 = (1.0-ref_idx) / (1.0+ref_idx);
-    let r0 = r0*r0;
-    r0 + (1.0-r0)*f64::powf(1.0 - cosine,5.0)
+    let r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+    let r0 = r0 * r0;
+    r0 + (1.0 - r0) * f64::powf(1.0 - cosine, 5.0)
 }
-
 
 pub struct Dielectric {
     ir: f64,
@@ -105,13 +104,13 @@ impl Material for Dielectric {
         let cos_theta = (-unit_direction.dot(&hit_record.normal)).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
         let cannot_refract = refraction_ratio * sin_theta > 1.0;
-        
         let dist = Uniform::new(0.0, 1.0);
-        let direction = if cannot_refract || reflectance(cos_theta, refraction_ratio) > rng.sample(dist) {
-            unit_direction.reflect(&hit_record.normal)
-        } else {
-            unit_direction.refract(&hit_record.normal, refraction_ratio)
-        };
+        let direction =
+            if cannot_refract || reflectance(cos_theta, refraction_ratio) > rng.sample(dist) {
+                unit_direction.reflect(&hit_record.normal)
+            } else {
+                unit_direction.refract(&hit_record.normal, refraction_ratio)
+            };
 
         let scattered_ray = Ray::new(hit_record.point, direction);
 
