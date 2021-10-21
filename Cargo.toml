@@ -2,7 +2,7 @@
 name = "raytracing_weekend_rs"
 version = "0.1.2"
 authors = ["Jakob Fischer <jakob@automorph.info>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
